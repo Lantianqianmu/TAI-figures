@@ -19,8 +19,10 @@ Other R packages are indicated in sessioninfo of each markdown file.
 ```
 cd TAI-figures
 ```
-(2) Prepare source data. There will be two set of data: a) the V1_data folder, which stores tsv/excel files, and b) R object folders, which contain processed ArchR and Seurat project. Please set the correct path to source data at the beginning of each markdown. 
-(3) Execute the code block-by-block to reproduce figures. Time to reproduce each figure varies from seconds to 30 minutes.
+(2) Prepare source data. There will be two set of data: a) the V1_data folder, which stores tsv/excel files, and b) R object folders, which contain processed ArchR and Seurat project. 
+(3) Please set the correct path to source data, and path to ___utils.R___ at the beginning of each markdown.  
+(3) Execute the code block-by-block to reproduce figures. Time to reproduce each figure varies from seconds to 30 minutes.  
+
 
 
 
