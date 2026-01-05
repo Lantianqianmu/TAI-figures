@@ -1,0 +1,90 @@
+---
+title: "Figure S16"
+author: "Runze Xie @ institute of biophysics, 11/07/2025"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = "/home/zeemeeuw/data/TAI-Rmd/V1_data")
+```
+
+### Loading packages
+```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(tidyr)
+library(tibble)
+library(readr)
+library(openxlsx)
+library(readxl)
+library(ggrepel)
+source("/home/zeemeeuw/data/TAI-Rmd/V1_code/utils.R")
+setwd('/home/zeemeeuw/data/TAI-Rmd/V1_data')
+```
+
+### Heatmap of TRAV gene usage
+```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=20, fig.width=4}
+
+tcr_paired <- readxl::read_excel("Lm-TCR4.57-clonotypes-paired in rna.xlsx") %>% 
+  dplyr::mutate(tissue = str_extract(Tissue_time, "(.*)-", group = 1)) %>% 
+  group_by(CDRa_CDRb, timepoint, tissue, barcode) %>% 
+  distinct(CDRa_CDRb, timepoint, tissue, barcode, .keep_all = TRUE) %>% 
+  ungroup()
+
+pdata <- as.data.frame.array(table(tcr_paired$TRAV, tcr_paired$timepoint))
+pdata <- pdata[,c("WT", "d3", "d5", "d8", "d14", "d30", "R5", "Y5")]
+pdata <- t(t(pdata)/colSums(pdata))
+pdata[pdata > 0.2] <- 0.2
+pheatmap::pheatmap(pdata,
+                   show_colnames = TRUE,
+                   show_rownames = TRUE,
+                   cluster_rows = TRUE,
+                   cluster_cols = FALSE,
+                   treeheight_col = 0,
+                   treeheight_row = 10,
+                   border_color = NA,
+                   clustering_method = "centroid",
+                   scale = "none",
+                   color = choose_colorset("wolfgang_basic"),
+                   fontsize_row = 8,
+                   width = 3, height = 10)
+
+```
+
+
+### Heatmap of TRBJ gene usage
+```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=6, fig.width=4}
+
+tcr_paired <- readxl::read_excel("mmJoint96_filtered_tcr_longer.xlsx") %>% 
+  dplyr::mutate(TRBV = str_extract(TRBV, "(.*)\\*", group = 1),
+                TRBJ = str_extract(TRBJ, "(.*)\\*", group = 1))
+
+pdata <- as.data.frame.array(table(tcr_paired$TRBV, tcr_paired$timepoint))
+pdata <- pdata[, 
+               c("D5", "D8", "D14", "D21", "R5")]
+pdata <- t(t(pdata)/colSums(pdata))
+pdata[pdata > 0.3] <- 0.3
+
+pheatmap::pheatmap(pdata,
+                   show_colnames = TRUE,
+                   show_rownames = TRUE,
+                   cluster_rows = TRUE,
+                   cluster_cols = FALSE,
+                   treeheight_col = 0,
+                   treeheight_row = 10,
+                   border_color = NA,
+                   clustering_method = "average",
+                   scale = "none",
+                   color = choose_colorset("wolfgang_basic"),
+                   fontsize_row = 8,
+                   width = 2.08, height = 3.4)
+
+```
+
+
+```{r eval=TRUE, include=TRUE}
+sessionInfo()
+```
+
+

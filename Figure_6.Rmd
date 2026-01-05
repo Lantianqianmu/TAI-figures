@@ -1,0 +1,834 @@
+---
+title: "Figure 6"
+author: "Runze Xie @ institute of biophysics, 01/04/2026"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = "/home/zeemeeuw/data/TAI-Rmd/V1_data")
+```
+
+### Loading packages
+```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE}
+library(dplyr)
+library(tidyr)
+library(tibble)
+library(stringr)
+library(readr)
+library(ggplot2)
+library(patchwork)
+library(readxl)
+library(openxlsx)
+library(pheatmap)
+library(Seurat)
+library(ArchR)
+library(scattermore)
+source("/home/zeemeeuw/data/TAI-Rmd/V1_code/utils.R")
+setwd('/home/zeemeeuw/data/TAI-Rmd/V1_data')
+```
+
+### Read Seurat and ArchR object for plotting. 
+#### Critical: change the directory to your working dir accordingly!
+The DORC matrix was called with FigR. Here we provide called peak-GEX correlation dataframe and MAGIC-smoothed DORC/RNA matrix.
+```{r include = TRUE}
+RDSdir <- "/home/zeemeeuw/data/mmJoint/RNA/data/lm_ym/" # output RDS file dir
+ATACdir <- "/home/zeemeeuw/data/mmJoint/ATAC/overlapped_harmony/" # ATAC root dir
+
+# read Seurat and ArchR object
+seu <- readRDS(paste0(RDSdir, "lm_merged_overlapped_harmony.rds"))
+proj <- loadArchRProject(ATACdir)
+
+# load smoothed DORC and RNA matrix
+load(paste0(RDSdir, "lm_merged_overlapped_harmony_mat_smoothed.RData"))
+load(paste0(RDSdir, "calculated_seurat_gene_module.Rdata"))
+load(paste0(RDSdir, "gene_module.Rdata"))
+
+k <- 10
+trajectory <- 'Spleen.trajectory'
+var_equal <- TRUE
+cp1 <- 2.520776 
+cp2 <- 27.545472 
+cp3 <- 55.912739 
+cp4 <- 97.637571
+df_time_corrected <- readRDS(paste0(RDSdir, "chromatin_checkpoint_", 'Spleen.trajectory', "_k_", k, ".rds"))
+```
+
+### Set parameters for plotting
+```{r include = TRUE}
+mmjoint_colors <- c("Quiescent" = "#bbdefb", 
+                    "Priming_1" =  "#519ec6", 
+                    "Priming_2" = "#3971ff",
+                    "Activation_1" = "#a9df91", 
+                    "Activation_2" = "#7eca72", 
+                    "Activation_3" = "#48b352", 
+                    "Effector_1" = "#ffb669", 
+                    "Effector_2" = "#ff882e", 
+                    "Effector-memory_transition_1" = "#cda7c7",
+                    "Effector-memory_transition_2" = "#9e79b6",
+                    "Effector-memory_transition_3" = "#7c4d9f",
+                    "Memory_1" = "#ef999c", 
+                    "Memory_2" = "#eb5e63",
+                    "Memory_3" = "#e53a46")
+color_bond <- c(catch = "#7BAFDE",
+                slip = "#F8B075FF")
+level_TCR <- c("jurkat", "220", "221", "231", "232", "233", "234", "235", 
+               "236", "237", "238", "271", "272", "273", "274", "275", "213", 
+               "214", "215", "216", "217", "218", "219", "222", "228", "229", 
+               "230", "239", "240", "241", "242", "243", "244", "245", "246", 
+               "247", "248", "249", "250", "251", "252", "253", "254", "255", 
+               "256", "257", "258", "259", "260", "223", "224", "225", "226", 
+               "227", "261", "262", "263", "264", "265", "266", "267", "268", 
+               "269", "270")
+
+```
+
+
+
+### Gene module score of catch and slip bond TCR
+```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=3, fig.width=15}
+
+# TCR info
+meta <- read.xlsx('Lm-TCR4.57-clonotypes-paired in rna.xlsx') %>% 
+  dplyr::mutate(tissue = str_extract(Tissue_time, "(.*)-", group = 1)) %>% 
+  group_by(CDRa_CDRb, timepoint, tissue, barcode) %>% 
+  distinct(CDRa_CDRb, timepoint, tissue, barcode, .keep_all = TRUE) %>% 
+  ungroup() %>% 
+  dplyr::filter(!str_detect(CDRa_CDRb, "_")) %>% 
+  # dplyr::filter(tissue == "Spleen") %>%
+  dplyr::filter(timepoint == "d8") %>%
+  dplyr::mutate(group = case_match(timepoint, c("d3") ~ "Priming", c("R5", "Y5") ~ "Recall", .default = "Primary")) %>% 
+  group_by(CDRa_CDRb, group) %>% 
+  dplyr::mutate(n = n()) %>% 
+  group_by(group) %>% 
+  dplyr::mutate(total_n = n()) %>% 
+  ungroup()
+
+df_tcr <- read_tsv('TCR_cloned_CDR.tsv') %>% 
+  dplyr::filter(!is.na(group)) %>% 
+  dplyr::mutate_at(vars('id'), as.character) %>% 
+  dplyr::mutate_at(vars('id'), ~factor(.x, levels = level_TCR)) %>% 
+  arrange(id) %>% 
+  column_to_rownames('id') %>% 
+  dplyr::filter(group == "Primary") %>% 
+  dplyr::filter(CDRa_CDRb %in% meta$CDRa_CDRb)
+
+tibble_tcr <- df_tcr %>% rownames_to_column('id')
+
+dft <- seu@meta.data %>% as_tibble() %>% 
+  dplyr::select(timepoint, tissue, cell_module, chain1, chain2, cellnames) 
+d1 <- dft %>% dplyr::select(timepoint, tissue, cell_module, chain1, cellnames) %>% rename_with(~c("timepoint", "tissue", "cell_module", "chain", "cellnames"))
+d2 <- dft %>% dplyr::select(timepoint, tissue, cell_module, chain2, cellnames) %>% rename_with(~c("timepoint", "tissue", "cell_module", "chain", "cellnames"))
+dft <- bind_rows(d1, d2) %>% 
+  dplyr::filter(tissue == "Spleen") %>%  ### filter sp
+  dplyr::filter(!is.na(chain)) %>% 
+  group_by(timepoint, chain) %>% 
+  dplyr::mutate(count_timepoint = n())
+
+dft_d8 <- dft %>% 
+  dplyr::filter(timepoint == "d8") %>% 
+  dplyr::filter(chain %in% df_tcr$CDRa_CDRb) %>% 
+  left_join(tibble_tcr, by = join_by("chain" == "CDRa_CDRb")) %>% 
+  group_by(chain) %>% 
+  dplyr::mutate(EMTratio = sum(cell_module %in% c("Effector-memory_transition_1", "Effector-memory_transition_2", "Effector-memory_transition_3")) / n()) %>% 
+  dplyr::mutate(EFFratio = 1 - EMTratio) %>% 
+  dplyr::mutate(MEratio = sum(cell_module %in% c("Effector-memory_transition_1", "Effector-memory_transition_2", "Effector-memory_transition_3")) / sum(cell_module %in% c("Effector_1", "Effector_2"))) %>% 
+  dplyr::mutate(group = case_when(sum(cell_module %in% c("Effector_1", "Effector_2"))/n() > 0.7 ~ "Eff biased",
+                                  sum(cell_module %in% c("Effector-memory_transition_1", "Effector-memory_transition_2", "Effector-memory_transition_3"))/n() > 0.7 ~ "EMT biased",
+                                  .default = "no bias")) %>% 
+  dplyr::mutate(has_memory = case_when(sum(cell_module %in% c("Memory_1", "Memory_2", "Memory_3")) > 0 ~ "Yes",
+                                       .default = "No"))
+dft_d8$group <- factor(dft_d8$group, levels = c("Eff biased", "no bias", "EMT biased")) 
+dft_d8 <- dft_d8 %>% arrange(MEratio)
+dft_d8$chain <- factor(dft_d8$chain, levels = unique(dft_d8$chain))
+dft_d8$id <- factor(dft_d8$id, levels = unique(dft_d8$id))
+
+# module score
+df_gm <- module_score_cd8[dft_d8$cellnames,] %>% 
+  as_tibble() 
+dft_d8 <- dft_d8 %>% 
+  bind_cols(df_gm)
+
+# checkpoint score
+df_time <- df_time_corrected %>% 
+  dplyr::filter(cellnames %in% dft_d8$cellnames) %>% 
+  dplyr::mutate(diff_raw = -diff,
+                diff_spline = -diff_pred,
+                dt_raw_cp3 = new_time - cp3,
+                dt_spline_cp3 = old_time + diff_pred - cp3,
+                old_time_to_cp1 = old_time - cp1,
+                old_time_to_cp2 = old_time - cp2,
+                old_time_to_cp3 = old_time - cp3,
+                old_time_to_cp4 = old_time - cp4) 
+
+
+data_time <- df_time %>% left_join(dft_d8, by = "cellnames") %>% 
+  dplyr::mutate_at(vars(bond), ~factor(.x, levels = c("catch", "slip"))) %>% 
+  dplyr::filter(abs(old_time_to_cp3) < 20)
+
+
+df_time <- df_time_corrected %>% 
+  dplyr::filter(cellnames %in% dft_d8$cellnames) %>% 
+  dplyr::mutate(old_time_to_cp2 = old_time - cp2,
+                old_time_to_cp3 = old_time - cp3) 
+  
+  
+  data_time <- df_time %>% left_join(dft_d8, by = "cellnames") %>% 
+    dplyr::mutate_at(vars(bond), ~factor(.x, levels = c("catch", "slip"))) %>% 
+    dplyr::filter(abs(old_time_to_cp3) < 20)
+
+    data_time <- data_time %>% 
+      dplyr::mutate(x = case_match(bond, "catch" ~ 1L, "slip" ~ 2L)) %>% 
+      dplyr::mutate_at(vars(bond), ~factor(.x, levels = c("catch", "slip")))
+
+plot_list <- list()
+for (metric in c("Naive", "Activation/Effector function", "Cytotoxicity", "Chemokine/Chemokine receptor", "Adhesion", "old_time_to_cp2", "old_time_to_cp3")) {
+  cb <- combn(levels(data_time$bond),2)
+  df_sig <- lapply(1:ncol(cb), function (i){
+    conc_1 <- cb[1, i]
+    conc_2 <- cb[2, i]
+    df_sub <- data_time %>% dplyr::filter(bond %in% c(conc_1, conc_2)) 
+    t1 <- wilcox.test(x = df_sub %>% dplyr::filter(bond == conc_1) %>% pull(!!metric),
+                 y = df_sub %>% dplyr::filter(bond == conc_2) %>% pull(!!metric), 
+                 # alternative = "less",
+                 var.equal = var_equal)
+    c1 <- tibble(p = t1$p.value,
+                 xmin = df_sub %>% dplyr::filter(bond == conc_1) %>% pull(x) %>% unique(),
+                 xmax = df_sub %>% dplyr::filter(bond == conc_2) %>% pull(x) %>% unique(),
+                 y = max(data_time[[metric]], na.rm = TRUE) + 
+                   (max(data_time[[metric]], na.rm = TRUE)-min(data_time[[metric]], na.rm = TRUE)) /10*(0.8*i),
+                 group_1 = conc_1,
+                 group_2 = conc_2)
+    c1
+  }) %>% Reduce("rbind", .)
+  df_sig <- df_sig %>% 
+    mutate_at(vars(p), scales::number, accuracy = 0.000001)
+  
+  
+  
+  p <- ggplot(data_time, aes(x = x, y = !!sym(metric))) + 
+    geom_boxplot(aes(group = x, fill = bond), show.legend = FALSE, outlier.shape = NA, notch = FALSE, staplewidth = 0.5) +
+    # geom_jitter(aes(fill = id, shape = bond), size = 2, show.legend = FALSE, width = 0.2) +
+    scale_shape_manual(values = c(slip = 21, catch = 23)) +
+    scale_fill_manual(values = color_bond) +
+    theme_bw() +
+    theme(panel.grid = element_blank(),
+          axis.text.x = element_text(size = 10, color = "black", angle = 45, hjust = 1),
+          axis.text.y = element_text(size = 10, color = "black"),
+          axis.title.x = element_text(size = 13),
+          axis.title.y = element_text(size = 13)) +
+    guides(fill = guide_legend(override.aes = list(size = 5))) +
+    geom_segment(data = df_sig, aes(x = xmin, xend = xmax, y = y, yend = y)) +
+    geom_text(data = df_sig, aes(x = (xmin + xmax) / 2, y = y, label = p), size = 2.5, vjust = -0.5) +
+    scale_x_continuous(breaks = 1:2, labels = levels(data_time$bond)) +
+    xlab(NULL)
+  plot_list[[metric]] <- p
+
+  
+}
+wrap_plots(plot_list, nrow = 1)
+  
+
+```
+
+### UMAP distribution of selected clonotypes
+```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=15}
+
+# Fig 6C: Clonotype projection, d8
+{
+  dft <- seu@meta.data %>% as_tibble() %>% 
+    dplyr::select(timepoint, tissue, cell_module, chain1, chain2) 
+  d1 <- dft %>% dplyr::select(timepoint, tissue, cell_module, chain1) %>% rename_with(~c("timepoint", "tissue", "cell_module", "chain"))
+  d2 <- dft %>% dplyr::select(timepoint, tissue, cell_module, chain2) %>% rename_with(~c("timepoint", "tissue", "cell_module", "chain"))
+  dft <- bind_rows(d1, d2) %>% 
+    dplyr::filter(!is.na(chain)) %>% 
+    group_by(timepoint, chain) %>% 
+    dplyr::mutate(count_timepoint = n())
+  
+  # d8 
+  dft_d8 <- dft %>% 
+    dplyr::filter(timepoint == "d8") %>% 
+    dplyr::filter(count_timepoint > 30) %>% 
+    group_by(chain) %>% 
+    dplyr::mutate(MEratio = sum(cell_module %in% c("Effector-memory_transition_1", "Effector-memory_transition_2", "Effector-memory_transition_3")) / sum(cell_module %in% c("Effector_1", "Effector_2"))) %>% 
+    dplyr::mutate(group = case_when(sum(cell_module %in% c("Effector_1", "Effector_2"))/n() > 0.7 ~ "Eff biased",
+                                    sum(cell_module %in% c("Effector-memory_transition_1", "Effector-memory_transition_2", "Effector-memory_transition_3"))/n() > 0.7 ~ "EMT biased",
+                                    .default = "no bias")) %>% 
+    dplyr::mutate(has_memory = case_when(sum(cell_module %in% c("Memory_1", "Memory_2", "Memory_3")) > 0 ~ "Yes",
+                                         .default = "No"))
+  dft_d8$group <- factor(dft_d8$group, levels = c("Eff biased", "no bias", "EMT biased")) 
+  dft_d8 <- dft_d8 %>% arrange(MEratio)
+  dft_d8$chain <- factor(dft_d8$chain, levels = unique(dft_d8$chain))
+  
+  plot_list <- list()
+  for(chain in levels(dft_d8$chain)){
+    data <- data.frame(seu@reductions$UMAP_LSI_Combined_batch3.3@cell.embeddings) 
+    data$barcode <- rownames(data)
+    data <- cbind(data, seu@meta.data)
+    
+    xrange <- max(data$UMAPCombinedbatch33_1) - min(data$UMAPCombinedbatch33_1)
+    yrange <- max(data$UMAPCombinedbatch33_2) - min(data$UMAPCombinedbatch33_2)
+    p <- ggplot(data) +
+      geom_scattermore(aes(x = UMAPCombinedbatch33_1, y = UMAPCombinedbatch33_2), color = "grey90") +
+      theme_void() +
+      coord_fixed(xrange/yrange) +
+      geom_point(data = data[which(data$timepoint == "d8" & (data$chain1 ==  chain | data$chain2 == chain)),], aes(x = UMAPCombinedbatch33_1, y = UMAPCombinedbatch33_2, fill = cell_module), 
+                 shape = 21, size = 3, show.legend = FALSE) +
+      scale_fill_manual(values = mmjoint_colors) +
+      ggtitle(chain)
+    plot_list[[chain]] <- p
+  }
+  p2 <- list(plot_list[["CAASGTSGSWQLIF++CAWSLGVANTGQLYF"]],
+             plot_list[["CALGEEGGRALIF++CASSPQGRTGQLYF"]],
+             plot_list[["CALGEASSGQKLVF++CAWSLGLGNYAEQFF"]],
+             plot_list[["CALGGTGGYKVVF++CASSPRDSDYTF"]],
+             plot_list[["CAPGNSNNRIFF++CASRGYTEVFF"]])
+  wrap_plots(p2, ncol = 5)
+}
+
+# Fig 6D: Clonotype projection, d14
+{
+  dft <- seu@meta.data %>% as_tibble() %>% 
+    dplyr::select(timepoint, tissue, cell_module, chain1, chain2) 
+  d1 <- dft %>% dplyr::select(timepoint, tissue, cell_module, chain1) %>% rename_with(~c("timepoint", "tissue", "cell_module", "chain"))
+  d2 <- dft %>% dplyr::select(timepoint, tissue, cell_module, chain2) %>% rename_with(~c("timepoint", "tissue", "cell_module", "chain"))
+  dft <- bind_rows(d1, d2) %>% 
+    dplyr::filter(!is.na(chain)) %>% 
+    group_by(timepoint, chain) %>% 
+    dplyr::mutate(count_timepoint = n())
+  
+  dft_d14 <- dft %>% 
+    dplyr::filter(timepoint == "d14") %>% 
+    dplyr::filter(count_timepoint > 10) %>% 
+    group_by(chain) %>% 
+    dplyr::mutate(MEratio = sum(cell_module %in% c("Effector-memory_transition_1", "Effector-memory_transition_2", "Effector-memory_transition_3")) / sum(cell_module %in% c("Effector_1", "Effector_2"))) %>% 
+    dplyr::mutate(group = case_when(sum(cell_module %in% c("Effector_1", "Effector_2"))/n() > 0.7 ~ "Eff biased",
+                                    sum(cell_module %in% c("Effector-memory_transition_1", "Effector-memory_transition_2", "Effector-memory_transition_3"))/n() > 0.7 ~ "EMT biased",
+                                    .default = "no bias"))  %>% 
+    dplyr::mutate(has_memory = case_when(sum(cell_module %in% c("Memory_1", "Memory_2", "Memory_3")) > 0 ~ "Yes", .default = "No"))
+  dft_d14$group <- factor(dft_d14$group, levels = c("Eff biased", "no bias", "EMT biased")) 
+  dft_d14 <- dft_d14 %>% arrange(MEratio)
+  dft_d14$chain <- factor(dft_d14$chain, levels = unique(dft_d14$chain))
+  dft_d14$chain <- factor(dft_d14$chain, levels = c("CALSDPNTGKLTF++CASRRDRNQDTQYF", "CATVASSGSWQLIF++CASSMWGYEQYF", 
+                                                    "CAMREGQGGSAKLIF++CASSPDREGNLNTEVFF", "CAASRPSGSWQLIF++CAWSLTLANTGQLYF", 
+                                                    "CAADSSSGSWQLIF++CASSQDPTGGKSQNTLYF", "CAASRTSSGQKLVF++CASSRTGGASF", 
+                                                    "CALSDQGVTGNTGKLIF++CASSRTGEQYF", 
+                                                    "CAVNGYSNNRLTL++CASSRPRTGGSYEQYF", 
+                                                    "CAAPPGTGGYKVVF++CASSRSSNSDYTF", "CALWELASSGQKLVF++CASSRPRTGGSYEQYF", 
+                                                    "CASRNNYAQGLTF++CASGDAGTVNF", 
+                                                    "CALSAGSWQLIF++CASSGDTYAEQFF", "CAASRTSSGQKLVF++CASSRTGEQYF", 
+                                                    "CAVSRTGGYKVVF++CASSPRQTDYTF", "CAANSGTYQRF++CASGDAQ_KDTQYF", 
+                                                    "CALGGTGGYKVVF++CASSDSSNERLFF", "CAASESSGTYQRF++CASSPGAATGQLYF", 
+                                                    "CAIGAGNTGKLIF++CASGDAGAPLF", 
+                                                    "CAVSDPSSGQKLVF++CASRDTGQLYF", 
+                                                    "CALWELESNNRIFF++CASSDSSNERLFF", # yes
+                                                    "CAVRYPRNNNNAPRF++CASSDSSNERLFF", # yes
+                                                    "CALGVWGQLIF++CASSLSGQSQNTLYF", # yes
+                                                    "CAANSGTYQRF++CASSRDWGLLSQNTLYF", # yes
+                                                    "CAVNTGGLSGKLTF++CASSRQGDTGQLYF", # yes
+                                                    "CAVSMNSNNRIFF++CASGDAGAPLF", # yes
+                                                    "CAVSMTGGYKVVF++CASSPRQSDYTF", 
+                                                    "CAMRDYGSSGNKLIF++CASSLRDNNSGNTLYF", 
+                                                    "CALGGTGGYKVVF++CASSPRGDEQYF", "CALRNSGTYQRF++CASGDRGNTEVFF", 
+                                                    "CAMREGGGGSNYKLTF++CASSLDRGGNLNERLFF", "CVLGGYAQGLTF++CASGRAQDTQYF", 
+                                                    "CALGGTGGYKVVF++CASSPRDSDYTF", 
+                                                    "CAASENAYKVIF++CASSDRSSAETLYF"))
+  
+  plot_list <- list()
+  for(chain in levels(dft_d14$chain)){
+    data <- data.frame(seu@reductions$UMAP_LSI_Combined_batch3.3@cell.embeddings) 
+    data$barcode <- rownames(data)
+    data <- cbind(data, seu@meta.data)
+    
+    xrange <- max(data$UMAPCombinedbatch33_1) - min(data$UMAPCombinedbatch33_1)
+    yrange <- max(data$UMAPCombinedbatch33_2) - min(data$UMAPCombinedbatch33_2)
+    p <- ggplot(data) +
+      geom_scattermore(aes(x = UMAPCombinedbatch33_1, y = UMAPCombinedbatch33_2), color = "grey90") +
+      theme_void() +
+      coord_fixed(xrange/yrange) +
+      geom_point(data = data[which(data$timepoint == "d14" & (data$chain1 ==  chain | data$chain2 == chain)),], aes(x = UMAPCombinedbatch33_1, y = UMAPCombinedbatch33_2, fill = cell_module), 
+                 shape = 21, size = 3, show.legend = FALSE) +
+      scale_fill_manual(values = mmjoint_colors) +
+      ggtitle(chain)
+    plot_list[[chain]] <- p
+  }
+  p2 <- list(plot_list[["CAADSSSGSWQLIF++CASSQDPTGGKSQNTLYF"]],
+             plot_list[["CALWELESNNRIFF++CASSDSSNERLFF"]],
+             plot_list[["CAANSGTYQRF++CASSRDWGLLSQNTLYF"]],
+             plot_list[["CALGGTGGYKVVF++CASSPRDSDYTF"]],
+             plot_list[["CAVSMNSNNRIFF++CASGDAGAPLF"]])
+  wrap_plots(p2, ncol = 5)
+}
+  
+
+```
+
+### EMT ratio of expanded clonotypes in day 8
+```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=20}
+
+meta <- read.xlsx('Lm-TCR4.57-clonotypes-paired in rna.xlsx') %>% 
+  dplyr::mutate(tissue = str_extract(Tissue_time, "(.*)-", group = 1)) %>% 
+  group_by(CDRa_CDRb, timepoint, tissue, barcode) %>% 
+  distinct(CDRa_CDRb, timepoint, tissue, barcode, .keep_all = TRUE) %>% 
+  ungroup() %>% 
+  dplyr::filter(!str_detect(CDRa_CDRb, "_")) %>% 
+  # dplyr::filter(tissue == "Spleen") %>%
+  dplyr::filter(timepoint == "d8") %>%
+  dplyr::mutate(group = case_match(timepoint, c("d3") ~ "Priming", c("R5", "Y5") ~ "Recall", .default = "Primary")) %>% 
+  group_by(CDRa_CDRb, group) %>% 
+  dplyr::mutate(n = n()) %>% 
+  group_by(group) %>% 
+  dplyr::mutate(total_n = n()) %>% 
+  ungroup()
+
+df_tcr <- read_tsv('TCR_cloned_CDR.tsv') %>% 
+  dplyr::filter(!is.na(group)) %>% 
+  dplyr::mutate_at(vars('id'), as.character) %>% 
+  dplyr::mutate_at(vars('id'), ~factor(.x, levels = level_TCR)) %>% 
+  arrange(id) %>% 
+  column_to_rownames('id') %>% 
+  dplyr::filter(group == "Primary") %>% 
+  dplyr::filter(CDRa_CDRb %in% meta$CDRa_CDRb)
+
+tibble_tcr <- df_tcr %>% rownames_to_column('id')
+
+dft <- seu@meta.data %>% as_tibble() %>% 
+  dplyr::select(timepoint, tissue, cell_module, chain1, chain2, cellnames) 
+d1 <- dft %>% dplyr::select(timepoint, tissue, cell_module, chain1, cellnames) %>% rename_with(~c("timepoint", "tissue", "cell_module", "chain", "cellnames"))
+d2 <- dft %>% dplyr::select(timepoint, tissue, cell_module, chain2, cellnames) %>% rename_with(~c("timepoint", "tissue", "cell_module", "chain", "cellnames"))
+dft <- bind_rows(d1, d2) %>% 
+  dplyr::filter(tissue == "Spleen") %>%  ### filter sp
+  dplyr::filter(!is.na(chain)) %>% 
+  group_by(timepoint, chain) %>% 
+  dplyr::mutate(count_timepoint = n())
+
+dft_d8 <- dft %>% 
+  dplyr::filter(timepoint == "d8") %>% 
+  dplyr::filter(count_timepoint > 10) %>% 
+  left_join(tibble_tcr, by = join_by("chain" == "CDRa_CDRb")) %>% 
+  group_by(chain) %>% 
+  dplyr::mutate(EMTratio = sum(cell_module %in% c("Effector-memory_transition_1", "Effector-memory_transition_2", "Effector-memory_transition_3")) / n()) %>% 
+  dplyr::mutate(EFFratio = 1 - EMTratio) %>% 
+  dplyr::mutate(MEratio = sum(cell_module %in% c("Effector-memory_transition_1", "Effector-memory_transition_2", "Effector-memory_transition_3")) / sum(cell_module %in% c("Effector_1", "Effector_2"))) %>% 
+  dplyr::mutate(group = case_when(sum(cell_module %in% c("Effector_1", "Effector_2"))/n() > 0.7 ~ "Eff biased",
+                                  sum(cell_module %in% c("Effector-memory_transition_1", "Effector-memory_transition_2", "Effector-memory_transition_3"))/n() > 0.7 ~ "EMT biased",
+                                  .default = "no bias")) %>% 
+  dplyr::mutate(has_memory = case_when(sum(cell_module %in% c("Memory_1", "Memory_2", "Memory_3")) > 0 ~ "Yes",
+                                       .default = "No"))
+dft_d8$group <- factor(dft_d8$group, levels = c("Eff biased", "no bias", "EMT biased")) 
+dft_d8 <- dft_d8 %>% arrange(MEratio)
+dft_d8$chain <- factor(dft_d8$chain, levels = unique(dft_d8$chain))
+dft_d8$id <- factor(dft_d8$id, levels = unique(dft_d8$id))
+
+df_gm <- module_score_cd8[dft_d8$cellnames,] %>% 
+  as_tibble() 
+
+dft_d8 <- dft_d8 %>% 
+  bind_cols(df_gm)
+
+
+df_time <- df_time_corrected %>% 
+  dplyr::filter(cellnames %in% dft_d8$cellnames) %>% 
+  dplyr::mutate(old_time_to_cp1 = old_time - cp1,
+                old_time_to_cp2 = old_time - cp2,
+                old_time_to_cp3 = old_time - cp3,
+                old_time_to_cp4 = old_time - cp4) 
+
+
+data_time <- df_time %>% left_join(dft_d8, by = "cellnames") %>% 
+  dplyr::mutate_at(vars(bond), ~factor(.x, levels = c("catch", "slip"))) %>% 
+  group_by(chain) %>% 
+  dplyr::mutate(EMTratio = sum(cell_module %in% c("Effector-memory_transition_1", "Effector-memory_transition_2", "Effector-memory_transition_3")) / n()) %>% 
+  dplyr::mutate(EFFratio = 1 - EMTratio) %>% 
+  dplyr::mutate(MEratio = sum(cell_module %in% c("Effector-memory_transition_1", "Effector-memory_transition_2", "Effector-memory_transition_3")) / sum(cell_module %in% c("Effector_1", "Effector_2"))) %>% 
+  dplyr::mutate(group = case_when(sum(cell_module %in% c("Effector_1", "Effector_2"))/n() > 0.7 ~ "Eff biased",
+                                  sum(cell_module %in% c("Effector-memory_transition_1", "Effector-memory_transition_2", "Effector-memory_transition_3"))/n() > 0.7 ~ "EMT biased",
+                                  .default = "no bias")) %>% 
+  dplyr::mutate(has_memory = case_when(sum(cell_module %in% c("Memory_1", "Memory_2", "Memory_3")) > 0 ~ "Yes",
+                                       .default = "No"))
+
+data_time$group <- factor(data_time$group, levels = c("Eff biased", "no bias", "EMT biased")) 
+data_time$chain <- as.character(data_time$chain)
+data_time <- data_time %>% arrange(MEratio)
+data_time$chain <- factor(data_time$chain, levels = unique(data_time$chain))
+
+
+# n_distinct(data_time$chain)
+ggplot(data_time) +
+  geom_bar(aes(x = chain, fill = cell_module), position = "fill") +
+  scale_fill_manual(values = mmjoint_colors) +
+  xlab(NULL) +
+  ylab(NULL) +
+  theme_classic() +
+  theme(# axis.text.x = element_text(angle = 45, hjust = 1, size = 10, color = "black"),
+        axis.text.x = element_blank(),
+        axis.text.y = element_text(size = 10, color = "black"),
+        plot.margin = margin(1, 1, 1, 30)) +
+  ggtitle("d8 Spleen clonotypes (>10)") +
+  coord_fixed(ratio = 0.3*n_distinct(dft_d8$chain))
+
+
+
+
+
+```
+
+### Checkpoint scores of clonotypes in day 8
+```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=4, fig.width=15}
+
+
+data_time_avg <- data_time %>% 
+  group_by(chain) %>%
+  dplyr::summarise(old_time_to_cp1 = mean(old_time_to_cp1),
+                   old_time_to_cp2 = mean(old_time_to_cp2),
+                   old_time_to_cp3 = mean(old_time_to_cp3),
+                   old_time_to_cp4 = mean(old_time_to_cp4))
+pdata <- data_time_avg %>% ungroup() %>% dplyr::select(chain, old_time_to_cp1, old_time_to_cp2, old_time_to_cp3, old_time_to_cp4) %>% 
+  dplyr::arrange(chain) %>% 
+  column_to_rownames("chain")
+
+pheatmap::pheatmap(t(pdata[,c("old_time_to_cp1", "old_time_to_cp2", "old_time_to_cp3",  "old_time_to_cp4"),]),
+                   border_color = NA,
+                   show_colnames = FALSE,
+                   show_rownames = TRUE,
+                   cluster_rows = FALSE,
+                   cluster_cols = FALSE,
+                   breaks = seq(-10, 10, length.out = 91),
+                   clustering_method = "ward.D",
+                   scale = "none",
+                   fontsize_row = 10,
+                   fontsize_col = 10,
+                   angle_col = 45,
+                   color = rev(choose_colorset("PuOr", 101))[5:95])
+
+
+
+
+```
+
+### EMT ratio of expanded clonotypes in day 14
+```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=16}
+
+meta <- read.xlsx('Lm-TCR4.57-clonotypes-paired in rna.xlsx') %>% 
+  dplyr::mutate(tissue = str_extract(Tissue_time, "(.*)-", group = 1)) %>% 
+  group_by(CDRa_CDRb, timepoint, tissue, barcode) %>% 
+  distinct(CDRa_CDRb, timepoint, tissue, barcode, .keep_all = TRUE) %>% 
+  ungroup() %>% 
+  dplyr::filter(!str_detect(CDRa_CDRb, "_")) %>% 
+  # dplyr::filter(tissue == "Spleen") %>%
+  dplyr::filter(timepoint == "d14") %>%
+  dplyr::mutate(group = case_match(timepoint, c("d3") ~ "Priming", c("R5", "Y5") ~ "Recall", .default = "Primary")) %>% 
+  group_by(CDRa_CDRb, group) %>% 
+  dplyr::mutate(n = n()) %>% 
+  group_by(group) %>% 
+  dplyr::mutate(total_n = n()) %>% 
+  ungroup()
+
+df_tcr <- read_tsv('TCR_cloned_CDR.tsv') %>% 
+  dplyr::filter(!is.na(group)) %>% 
+  dplyr::mutate_at(vars('id'), as.character) %>% 
+  dplyr::mutate_at(vars('id'), ~factor(.x, levels = level_TCR)) %>% 
+  arrange(id) %>% 
+  column_to_rownames('id') %>% 
+  dplyr::filter(group == "Primary") %>% 
+  dplyr::filter(CDRa_CDRb %in% meta$CDRa_CDRb)
+
+tibble_tcr <- df_tcr %>% rownames_to_column('id')
+
+
+dft <- seu@meta.data %>% as_tibble() %>% 
+  dplyr::select(timepoint, tissue, cell_module, chain1, chain2, cellnames) 
+d1 <- dft %>% dplyr::select(timepoint, tissue, cell_module, chain1, cellnames) %>% rename_with(~c("timepoint", "tissue", "cell_module", "chain", "cellnames"))
+d2 <- dft %>% dplyr::select(timepoint, tissue, cell_module, chain2, cellnames) %>% rename_with(~c("timepoint", "tissue", "cell_module", "chain", "cellnames"))
+dft <- bind_rows(d1, d2) %>% 
+  dplyr::filter(tissue == "Spleen") %>%  ### filter sp
+  dplyr::filter(!is.na(chain)) %>% 
+  group_by(timepoint, chain) %>% 
+  dplyr::mutate(count_timepoint = n())
+
+dft_d8 <- dft %>% 
+  dplyr::filter(timepoint == "d14") %>% 
+  dplyr::filter(count_timepoint > 5) %>% 
+  left_join(tibble_tcr, by = join_by("chain" == "CDRa_CDRb")) %>% 
+  group_by(chain) %>% 
+  dplyr::mutate(EMTratio = sum(cell_module %in% c("Effector-memory_transition_1", "Effector-memory_transition_2", "Effector-memory_transition_3")) / n()) %>% 
+  dplyr::mutate(EFFratio = 1 - EMTratio) %>% 
+  dplyr::mutate(MEratio = sum(cell_module %in% c("Effector-memory_transition_1", "Effector-memory_transition_2", "Effector-memory_transition_3")) / sum(cell_module %in% c("Effector_1", "Effector_2"))) %>% 
+  dplyr::mutate(group = case_when(sum(cell_module %in% c("Effector_1", "Effector_2"))/n() > 0.7 ~ "Eff biased",
+                                  sum(cell_module %in% c("Effector-memory_transition_1", "Effector-memory_transition_2", "Effector-memory_transition_3"))/n() > 0.7 ~ "EMT biased",
+                                  .default = "no bias")) %>% 
+  dplyr::mutate(has_memory = case_when(sum(cell_module %in% c("Memory_1", "Memory_2", "Memory_3")) > 0 ~ "Yes",
+                                       .default = "No"))
+dft_d8$group <- factor(dft_d8$group, levels = c("Eff biased", "no bias", "EMT biased")) 
+dft_d8 <- dft_d8 %>% arrange(MEratio)
+dft_d8$chain <- factor(dft_d8$chain, levels = unique(dft_d8$chain))
+dft_d8$id <- factor(dft_d8$id, levels = unique(dft_d8$id))
+
+df_gm <- module_score_cd8[dft_d8$cellnames,] %>% 
+  as_tibble() 
+
+
+dft_d8 <- dft_d8 %>% 
+  bind_cols(df_gm)
+
+df_time <- df_time_corrected %>% 
+  dplyr::filter(cellnames %in% dft_d8$cellnames) %>% 
+  dplyr::mutate(old_time_to_cp1 = old_time - cp1,
+                old_time_to_cp2 = old_time - cp2,
+                old_time_to_cp3 = old_time - cp3,
+                old_time_to_cp4 = old_time - cp4)
+
+
+data_time <- df_time %>% left_join(dft_d8, by = "cellnames") %>% 
+  dplyr::mutate_at(vars(bond), ~factor(.x, levels = c("catch", "slip"))) %>% 
+  group_by(chain) %>% 
+  dplyr::mutate(EMTratio = sum(cell_module %in% c("Effector-memory_transition_1", "Effector-memory_transition_2", "Effector-memory_transition_3")) / n()) %>% 
+  dplyr::mutate(EFFratio = 1 - EMTratio) %>% 
+  dplyr::mutate(MEratio = sum(cell_module %in% c("Effector-memory_transition_1", "Effector-memory_transition_2", "Effector-memory_transition_3")) / sum(cell_module %in% c("Effector_1", "Effector_2"))) %>% 
+  dplyr::mutate(group = case_when(sum(cell_module %in% c("Effector_1", "Effector_2"))/n() > 0.7 ~ "Eff biased",
+                                  sum(cell_module %in% c("Effector-memory_transition_1", "Effector-memory_transition_2", "Effector-memory_transition_3"))/n() > 0.7 ~ "EMT biased",
+                                  .default = "no bias")) %>% 
+  dplyr::mutate(has_memory = case_when(sum(cell_module %in% c("Memory_1", "Memory_2", "Memory_3")) > 0 ~ "Yes",
+                                       .default = "No"))
+
+data_time$group <- factor(data_time$group, levels = c("Eff biased", "no bias", "EMT biased")) 
+data_time$chain <- as.character(data_time$chain)
+data_time <- data_time %>% arrange(MEratio)
+data_time$chain <- factor(data_time$chain, levels = unique(data_time$chain))
+
+
+# n_distinct(data_time$chain)
+ggplot(data_time) +
+  geom_bar(aes(x = chain, fill = cell_module), position = "fill") +
+  scale_fill_manual(values = mmjoint_colors) +
+  xlab(NULL) +
+  ylab(NULL) +
+  theme_classic() +
+  theme(# axis.text.x = element_text(angle = 45, hjust = 1, size = 10, color = "black"),
+        axis.text.x = element_blank(),
+        axis.text.y = element_text(size = 10, color = "black"),
+        plot.margin = margin(1, 1, 1, 30)) +
+  ggtitle("d14 Spleen clonotypes (>5)") +
+  coord_fixed(ratio = 0.3*n_distinct(dft_d8$chain))
+
+
+
+
+
+```
+
+### Checkpoint scores of clonotypes in day 14
+```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=4, fig.width=11}
+
+
+data_time_avg <- data_time %>% 
+  group_by(chain) %>%
+  dplyr::summarise(old_time_to_cp1 = mean(old_time_to_cp1),
+                   old_time_to_cp2 = mean(old_time_to_cp2),
+                   old_time_to_cp3 = mean(old_time_to_cp3),
+                   old_time_to_cp4 = mean(old_time_to_cp4))
+pdata <- data_time_avg %>% ungroup() %>% dplyr::select(chain, old_time_to_cp1, old_time_to_cp2, old_time_to_cp3, old_time_to_cp4) %>% 
+  arrange(chain) %>% 
+  column_to_rownames("chain")
+
+pheatmap::pheatmap(t(pdata[,c("old_time_to_cp1", "old_time_to_cp2", "old_time_to_cp3", "old_time_to_cp4"),]),
+                   border_color = NA,
+                   show_colnames = FALSE,
+                   show_rownames = TRUE,
+                   cluster_rows = FALSE,
+                   cluster_cols = FALSE,
+                   breaks = seq(-10, 10, length.out = 91),
+                   clustering_method = "ward.D",
+                   scale = "none",
+                   fontsize_row = 10,
+                   fontsize_col = 10,
+                   angle_col = 45,
+                   color = rev(choose_colorset("PuOr", 101))[5:95])
+  
+
+
+
+```
+
+
+### Correlation plot of checkpoint 3 score and EMT ratio
+```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=4, fig.width=5}
+
+
+# multiome TCR
+meta <- read.xlsx('Lm-TCR4.57-clonotypes-paired in rna.xlsx') %>% 
+  dplyr::mutate(tissue = str_extract(Tissue_time, "(.*)-", group = 1)) %>% 
+  group_by(CDRa_CDRb, timepoint, tissue, barcode) %>% 
+  distinct(CDRa_CDRb, timepoint, tissue, barcode, .keep_all = TRUE) %>% 
+  ungroup() %>% 
+  dplyr::filter(!str_detect(CDRa_CDRb, "_")) %>% 
+  dplyr::mutate(group = case_match(timepoint, c("d3") ~ "Priming", c("R5", "Y5") ~ "Recall", .default = "Primary")) %>% 
+  group_by(CDRa_CDRb, group) %>% 
+  dplyr::mutate(n = n()) %>% 
+  group_by(group) %>% 
+  dplyr::mutate(total_n = n()) %>% 
+  ungroup()
+
+df_tcr <- read_tsv('TCR_cloned_CDR.tsv') %>% 
+  dplyr::filter(!is.na(group)) %>% 
+  dplyr::mutate_at(vars('id'), as.character) %>% 
+  dplyr::mutate_at(vars('id'), ~factor(.x, levels = level_TCR)) %>% 
+  arrange(id) %>% 
+  column_to_rownames('id') %>% 
+  dplyr::filter(CDRa_CDRb %in% meta$CDRa_CDRb)
+
+dft <- seu@meta.data %>% as_tibble() %>% 
+  dplyr::select(timepoint, tissue, cell_module, chain1, chain2, cellnames) 
+d1 <- dft %>% dplyr::select(timepoint, tissue, cell_module, chain1, cellnames) %>% rename_with(~c("timepoint", "tissue", "cell_module", "chain", "cellnames"))
+d2 <- dft %>% dplyr::select(timepoint, tissue, cell_module, chain2, cellnames) %>% rename_with(~c("timepoint", "tissue", "cell_module", "chain", "cellnames"))
+dft <- bind_rows(d1, d2) %>% 
+  dplyr::filter(tissue == "Spleen") %>%  ### filter sp
+  dplyr::filter(!is.na(chain)) %>% 
+  group_by(timepoint, chain) %>% 
+  dplyr::mutate(count_timepoint = n())
+
+df_time <- df_time_corrected %>% 
+  dplyr::mutate(old_time_to_cp1 = old_time - cp1,
+                old_time_to_cp2 = old_time - cp2,
+                old_time_to_cp3 = old_time - cp3,
+                old_time_to_cp4 = old_time - cp4) 
+
+
+data_time <- dft %>% left_join(df_time, by = "cellnames") 
+
+
+
+
+# d3 checkpoint
+{
+  dft_d3 <- data_time %>%
+    dplyr::filter(timepoint == "d3") %>%
+    # dplyr::filter(tissue %in% c("Ln", "Spleen")) %>%
+    # dplyr::filter(cell_module %in% c("Priming_1", "Priming_2")) %>%
+    dplyr::filter(count_timepoint > 1) %>%
+    group_by(chain) %>%
+    dplyr::mutate(major_module = str_extract(cell_module, "(.*)_", group = 1)) %>%
+    dplyr::mutate_at(vars(major_module), ~factor(.x, levels = c("Quiescent", "Priming", "Activation", "Effector", "Effector-memory_transition", "Memory"))) %>%
+    dplyr::mutate(ratio_Quiescent = sum(major_module %in% c("Quiescent")) / n()) %>%
+    dplyr::mutate(ratio_Priming = sum(major_module %in% c("Priming")) / n()) %>%
+    dplyr::mutate(ratio_Activation = sum(major_module %in% c("Activation")) / n()) %>%
+    dplyr::mutate(ratio_Effector = sum(major_module %in% c("Effector")) / n()) %>%
+    dplyr::mutate(ratio_EMT = sum(major_module %in% c("Effector-memory_transition")) / n()) %>%
+    dplyr::mutate(ratio_Memory = sum(major_module %in% c("Memory")) / n()) %>%
+    dplyr::mutate(poly = n_distinct(major_module)) %>%
+    dplyr::mutate(MEratio = ratio_Effector/(ratio_EMT + ratio_Effector)) %>%
+    dplyr::arrange(desc(ratio_Quiescent), desc(ratio_Priming), desc(ratio_Activation), desc(ratio_Effector), desc(ratio_EMT), desc(ratio_Memory)) 
+  dft_d3 <- dft_d3 %>% dplyr::mutate_at(vars(chain), ~factor(.x, levels = unique(dft_d3$chain)))
+  d3_tcr <- levels(dft_d3$chain)
+  
+}
+
+# d5 checkpoint
+{
+  dft_d5 <- data_time %>%
+    dplyr::filter(timepoint == "d5") %>%
+    # dplyr::filter(tissue %in% c("Ln", "Spleen")) %>%
+    dplyr::filter(count_timepoint > 1) %>%
+    group_by(chain) %>%
+    dplyr::mutate(major_module = str_extract(cell_module, "(.*)_", group = 1)) %>%
+    dplyr::mutate_at(vars(major_module), ~factor(.x, levels = c("Quiescent", "Priming", "Activation", "Effector", "Effector-memory_transition", "Memory"))) %>%
+    dplyr::mutate(ratio_Quiescent = sum(major_module %in% c("Quiescent")) / n()) %>%
+    dplyr::mutate(ratio_Priming = sum(major_module %in% c("Priming")) / n()) %>%
+    dplyr::mutate(ratio_Activation = sum(major_module %in% c("Activation")) / n()) %>%
+    dplyr::mutate(ratio_Effector = sum(major_module %in% c("Effector")) / n()) %>%
+    dplyr::mutate(ratio_EMT = sum(major_module %in% c("Effector-memory_transition")) / n()) %>%
+    dplyr::mutate(ratio_Memory = sum(major_module %in% c("Memory")) / n()) %>%
+    dplyr::mutate(poly = n_distinct(major_module)) %>%
+    dplyr::mutate(MEratio = ratio_Effector/(ratio_EMT + ratio_Effector)) %>%
+    dplyr::arrange(desc(ratio_Quiescent), desc(ratio_Priming), desc(ratio_Activation), desc(ratio_Effector), desc(ratio_EMT), desc(ratio_Memory)) 
+  dft_d5 <- dft_d5 %>% dplyr::mutate_at(vars(chain), ~factor(.x, levels = unique(dft_d5$chain)))
+  d5_tcr <- levels(dft_d5$chain)
+  
+  
+}
+
+# d8
+{
+  dft_d8 <- data_time %>% 
+    dplyr::filter(timepoint == "d8") %>% 
+    dplyr::filter(count_timepoint > 10) %>% 
+    group_by(chain) %>%
+    dplyr::mutate(major_module = str_extract(cell_module, "(.*)_", group = 1)) %>%
+    dplyr::mutate_at(vars(major_module), ~factor(.x, levels = c("Quiescent", "Priming", "Activation", "Effector", "Effector-memory_transition", "Memory"))) %>%
+    dplyr::mutate(ratio_Quiescent = sum(major_module %in% c("Quiescent")) / n()) %>%
+    dplyr::mutate(ratio_Priming = sum(major_module %in% c("Priming")) / n()) %>%
+    dplyr::mutate(ratio_Activation = sum(major_module %in% c("Activation")) / n()) %>%
+    dplyr::mutate(ratio_Effector = sum(major_module %in% c("Effector")) / n()) %>%
+    dplyr::mutate(ratio_EMT = sum(major_module %in% c("Effector-memory_transition")) / n()) %>%
+    dplyr::mutate(ratio_Memory = sum(major_module %in% c("Memory")) / n()) %>%
+    dplyr::mutate(poly = n_distinct(major_module)) %>%
+    dplyr::mutate(MEratio = ratio_Effector/(ratio_EMT + ratio_Effector)) %>%
+    dplyr::arrange(desc(ratio_Quiescent), desc(ratio_Priming), desc(ratio_Activation), desc(ratio_Effector), desc(ratio_EMT), desc(ratio_Memory)) 
+  dft_d8 <- dft_d8 %>% dplyr::mutate_at(vars(chain), ~factor(.x, levels = unique(dft_d8$chain)))
+  d8_tcr <- levels(dft_d8$chain)
+  
+
+}
+
+# d14
+{
+  dft_d14 <- data_time %>% 
+    dplyr::filter(timepoint == "d14") %>% 
+    dplyr::filter(count_timepoint > 5) %>% 
+    group_by(chain) %>%
+    dplyr::mutate(major_module = str_extract(cell_module, "(.*)_", group = 1)) %>%
+    dplyr::mutate_at(vars(major_module), ~factor(.x, levels = c("Quiescent", "Priming", "Activation", "Effector", "Effector-memory_transition", "Memory"))) %>%
+    dplyr::mutate(ratio_Quiescent = sum(major_module %in% c("Quiescent")) / n()) %>%
+    dplyr::mutate(ratio_Priming = sum(major_module %in% c("Priming")) / n()) %>%
+    dplyr::mutate(ratio_Activation = sum(major_module %in% c("Activation")) / n()) %>%
+    dplyr::mutate(ratio_Effector = sum(major_module %in% c("Effector")) / n()) %>%
+    dplyr::mutate(ratio_EMT = sum(major_module %in% c("Effector-memory_transition")) / n()) %>%
+    dplyr::mutate(ratio_Memory = sum(major_module %in% c("Memory")) / n()) %>%
+    dplyr::mutate(poly = n_distinct(major_module)) %>%
+    dplyr::mutate(MEratio = ratio_Effector/(ratio_EMT + ratio_Effector)) %>%
+    dplyr::arrange(desc(ratio_Quiescent), desc(ratio_Priming), desc(ratio_Activation), desc(ratio_Effector), desc(ratio_EMT), desc(ratio_Memory)) 
+  dft_d14 <- dft_d14 %>% arrange(MEratio)
+  dft_d14$chain <- factor(dft_d14$chain, levels = unique(dft_d14$chain))
+  d14_tcr <- levels(dft_d14$chain)
+
+  
+}
+
+
+data_time_avg <- bind_rows(dft_d3, dft_d5, dft_d8, dft_d14) %>% 
+  group_by(chain, ratio_EMT) %>%
+      dplyr::filter(!is.na(old_time)) %>% 
+  dplyr::summarise(old_time_to_cp1 = mean(old_time_to_cp1, na.rm = TRUE),
+                   old_time_to_cp2 = mean(old_time_to_cp2, na.rm = TRUE),
+                   old_time_to_cp3 = mean(old_time_to_cp3, na.rm = TRUE),
+                   old_time_to_cp4 = mean(old_time_to_cp4, na.rm = TRUE))
+
+R_val <- cor(data_time_avg$old_time_to_cp3, data_time_avg$ratio_EMT, method = 'pearson')
+ggplot(data_time_avg, aes(x = old_time_to_cp3, y = ratio_EMT)) +
+  geom_smooth(se = FALSE, formula = y ~ x, method = lm, fullrange = FALSE) +
+  geom_point(aes(fill = ratio_EMT), size = 3, shape = 21) +
+  scale_fill_gradientn(colors = choose_colorset("solar_extra")) +
+  ylim(0, 1) +
+  # scale_fill_gradientn(colors = choose_colorset("nostelgia")) +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(size = 10, color = "black"),
+        axis.text.y = element_text(size = 10, color = "black"),
+        axis.title.x = element_text(size = 13),
+        axis.title.y = element_text(size = 13),
+        strip.background = element_rect(fill = "grey90"),
+        strip.text = element_text(size = 10, color = "black")) +
+  guides(fill = guide_colorbar(ticks = FALSE, draw.ulim = FALSE, draw.llim = FALSE, 
+                               theme = theme(legend.ticks = element_blank()))) +
+  coord_fixed(ratio = (max(data_time_avg$old_time_to_cp3) - min(data_time_avg$old_time_to_cp3))/
+                (max(data_time_avg$ratio_EMT) - min(data_time_avg$ratio_EMT))) +
+  annotate(geom = "text", x = -20, y = 0.9, colour = "black", size = 5, angle = 0, label = paste0("pearson\nR = ",  R_val))
+
+```
+
+  
+```{r eval=TRUE, include=TRUE}
+sessionInfo()
+```
+
+
+

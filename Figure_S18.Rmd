@@ -1,0 +1,240 @@
+---
+title: "Figure S18"
+author: "Runze Xie @ institute of biophysics, 01/05/2026"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = "/home/zeemeeuw/data/TAI-Rmd/V1_data")
+```
+
+### Loading packages
+```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE}
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(readr)
+library(ggplot2)
+library(patchwork)
+library(ggrepel)
+library(readxl)
+library(openxlsx)
+source("/home/zeemeeuw/data/TAI-Rmd/V1_code/utils.R")
+setwd('/home/zeemeeuw/data/TAI-Rmd/V1_data')
+```
+
+### Set parameters for plotting
+```{r include = TRUE}
+color_phase <- c("Ctrl" = "grey", 
+                 "Priming" = "#A6CDE2", 
+                 "Primary" = "#F47E1F" , 
+                 "Recall" = "#74C476")
+
+
+level_TCR <- c("jurkat", "220", "221", "231", "232", "233", "234", "235", 
+               "236", "237", "238", "271", "272", "273", "274", "275", "213", 
+               "214", "215", "216", "217", "218", "219", "222", "228", "229", 
+               "230", "239", "240", "241", "242", "243", "244", "245", "246", 
+               "247", "248", "249", "250", "251", "252", "253", "254", "255", 
+               "256", "257", "258", "259", "260", "223", "224", "225", "226", 
+               "227", "261", "262", "263", "264", "265", "266", "267", "268", 
+               "269", "270")
+
+
+color_TCR <- c("grey70",
+               colorRampPalette(c("#B6BFEB", "#8694D8", "#5668C3", "#3648A2"))(15),
+               colorRampPalette(c("#F7B4B4", "#ED8080", "#DF4A4A", "#BE2A2A"))(33),
+               colorRampPalette(c("#B6EBBA", "#86D88B", "#56C35D", "#36A23D"))(15))
+names(color_TCR) <- level_TCR
+var_equal <- TRUE
+
+```
+
+### ECDF of %tet+ of cloned TCR
+```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=5}
+
+data <- read_excel("61_TCR_tet_coculture_BFP.xlsx") %>% 
+  dplyr::mutate_at(vars(TCR), ~factor(.x, levels = level_TCR)) %>% 
+  dplyr::mutate_at(vars(phase), ~factor(.x, levels = c("Priming", "Primary", "Recall"))) %>%  
+  arrange(TCR) %>% 
+  dplyr::mutate(bond_type = if_else(bond == "catch", 0, 1)) 
+
+pdata <- data %>% dplyr::filter(phase %in% c("Primary", "Recall", "Priming")) %>% 
+  mutate_at(vars(phase), as.character)
+
+# Primary vs Recall  
+sample1 <- data %>% dplyr::filter(phase == "Primary") %>% pull(prop_CD69)
+sample2 <- data %>% dplyr::filter(phase == "Recall") %>% pull(prop_CD69)
+ks_test_p_primary_recall <- ks.test(sample1, sample2, alternative = "less")$p.value
+ks_test_d_primary_recall <- ks.test(sample1, sample2, alternative = "less")$statistic
+
+# Primary vs Priming
+sample1 <- data %>% dplyr::filter(phase == "Primary") %>% pull(prop_CD69)
+sample2 <- data %>% dplyr::filter(phase == "Priming") %>% pull(prop_CD69)
+ks_test_p_primary_priming <- ks.test(sample1, sample2, alternative = "less")$p.value
+ks_test_d_primary_priming <- ks.test(sample1, sample2, alternative = "less")$statistic
+
+# Recall vs Priming
+sample1 <- data %>% dplyr::filter(phase == "Recall") %>% pull(prop_CD69)
+sample2 <- data %>% dplyr::filter(phase == "Priming") %>% pull(prop_CD69)
+ks_test_p_recall_priming <- ks.test(sample1, sample2, alternative = "less")$p.value
+ks_test_d_recall_priming <- ks.test(sample1, sample2, alternative = "less")$statistic
+  
+print(paste0("Primary vs Recall: KS test D = ", ks_test_d_primary_recall))  
+print(paste0("Primary vs Recall: KS test p = ", ks_test_p_primary_recall))  
+print(paste0("Primary vs Priming: KS test D = ", ks_test_d_primary_priming))  
+print(paste0("Primary vs Priming: KS test p = ", ks_test_p_primary_priming))  
+print(paste0("Recall vs Priming: KS test D = ", ks_test_d_recall_priming))  
+print(paste0("Recall vs Priming: KS test p = ", ks_test_p_recall_priming))  
+  
+ggplot(pdata, aes(x = prop_CD69, fill = phase)) + 
+  stat_ecdf(aes(color = phase), geom = "smooth", se = FALSE, size=1) + 
+  stat_ecdf(geom = "point", size = 2, shape = 21, pad = FALSE) + 
+  theme_bw() +
+  scale_color_manual(values = color_phase) +
+  scale_fill_manual(values = color_phase) +
+  ylab("ECDF") +
+  xlab("Mean % Tet") +
+  theme(axis.text.x = element_text(size = 10, color = "black"),
+        axis.text.y = element_text(size = 10, color = "black"),
+        axis.title.x = element_text(size = 13),
+        axis.title.y = element_text(size = 13)) +
+  coord_fixed(100)
+```
+
+
+
+
+### Compare affinity and %CD69 of low-affinity and high-affinity clones
+```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=3, fig.width=6}
+
+pdata <- data %>% dplyr::filter(TCR %in% c("251", "244", "247", "243", "256", 
+  "217", "259", "252", "257", "249", "253", "218", "222", "246", 
+  "248", "240", "242", "241", "255", "239", "254", "258", "245", 
+  "219", "260", "250")) %>% 
+  dplyr::mutate(tet_prop_25 = if_else(mean_prop > 25, ">25", "<=25")) %>% 
+  dplyr::mutate(x = if_else(tet_prop_25 == "<=25", 1, 2))
+plist <- list()
+for (metric in c("mean_prop", "log_MFI", "prop_CD69")) {
+  cb <- combn(unique(pdata$tet_prop_25),2)
+  df_sig <- lapply(1:ncol(cb), function (i){
+    conc_1 <- cb[1, i]
+    conc_2 <- cb[2, i]
+    df_sub <- pdata %>% dplyr::filter(tet_prop_25 %in% c(conc_1, conc_2))
+    t1 <- t.test(x = df_sub %>% dplyr::filter(tet_prop_25 == conc_1) %>% pull(!!metric),
+                 y = df_sub %>% dplyr::filter(tet_prop_25 == conc_2) %>% pull(!!metric), 
+                 # alternative = "less",
+                 var.equal = var_equal)
+    c1 <- tibble(p = t1$p.value,
+                 xmin = df_sub %>% dplyr::filter(tet_prop_25 == conc_1) %>% pull(x) %>% unique(),
+                 xmax = df_sub %>% dplyr::filter(tet_prop_25 == conc_2) %>% pull(x) %>% unique(),
+                 y = max(pdata[[metric]]) - (max(pdata[[metric]])-min(pdata[[metric]]))*0.1,
+                 group_1 = conc_1,
+                 group_2 = conc_2)
+    c1
+  }) %>% Reduce("rbind", .)
+  df_sig <- df_sig %>% 
+    mutate_at(vars(p), scales::number, accuracy = 0.000001)
+  
+  
+  p <- ggplot(pdata, aes(x = x, y = !!sym(metric))) + 
+    geom_boxplot(aes(group = x), show.legend = FALSE, outlier.shape = NA) +
+    geom_jitter(aes(fill = TCR, shape = bond), size = 2, show.legend = FALSE, width = 0.2) +
+    scale_shape_manual(values = c(slip = 21, catch = 23)) +
+    scale_fill_manual(values = color_TCR) +
+    theme_bw() +
+    theme(panel.grid = element_blank(),
+          axis.text.x = element_text(size = 10, color = "black"),
+          axis.text.y = element_text(size = 10, color = "black"),
+          axis.title.x = element_text(size = 13),
+          axis.title.y = element_text(size = 13)) 
+  p <- p + guides(fill = guide_legend(override.aes = list(size = 5))) +
+    geom_segment(data = df_sig, aes(x = xmin, xend = xmax, y = y, yend = y)) +
+    geom_text(data = df_sig, aes(x = (xmin + xmax) / 2, y = y, label = p), size = 2.5, vjust = -0.5) +
+    scale_x_continuous(breaks = 1:2, labels = c("<=25", ">25")) +
+    xlab(NULL)
+  plist[[metric]] <- p
+}
+wrap_plots(plist, nrow = 1)
+
+```
+
+### Scatterplot: %CD69+ vs lifetime_10pN
+```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=10}
+ggplot(data, aes(x = prop_CD69, y = lifetime_10pN)) + 
+  geom_point(aes(fill = TCR, shape = bond), size = 3) +
+  scale_shape_manual(values = c(slip = 21, catch = 23)) +
+  theme_bw() +
+  scale_fill_manual(values = color_TCR) +
+  xlab("prop_tet") +
+  ylab("prop_CD69") +
+  theme(axis.text.x = element_text(size = 10, color = "black"),
+        axis.text.y = element_text(size = 10, color = "black"),
+        axis.title.x = element_text(size = 13),
+        axis.title.y = element_text(size = 13)) +
+  coord_fixed((max(data[['prop_CD69']]) - min(data[['prop_CD69']]))/max(data$lifetime_10pN)) +
+  ggrepel::geom_text_repel(aes(label = TCR))
+  
+```
+
+
+### Compare tetMFI and %CD69 of catch and slip clones
+```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=3, fig.width=5}
+
+data <- data %>% 
+  dplyr::mutate(x = if_else(bond == "catch", 1, 2))
+
+plist <- list()
+for (metric in c("log_MFI", "prop_CD69")) {
+  
+  cb <- combn(unique(data$bond),2)
+  df_sig <- lapply(1:ncol(cb), function (i){
+    conc_1 <- cb[1, i]
+    conc_2 <- cb[2, i]
+    df_sub <- data %>% dplyr::filter(bond %in% c(conc_1, conc_2)) %>% 
+      dplyr::mutate(x = if_else(bond == "catch", 1, 2))
+    t1 <- t.test(x = df_sub %>% dplyr::filter(bond == conc_1) %>% pull(!!metric),
+                 y = df_sub %>% dplyr::filter(bond == conc_2) %>% pull(!!metric), 
+                 # alternative = "less",
+                 var.equal = var_equal)
+    c1 <- tibble(p = t1$p.value,
+                 xmin = df_sub %>% dplyr::filter(bond == conc_1) %>% pull(x) %>% unique(),
+                 xmax = df_sub %>% dplyr::filter(bond == conc_2) %>% pull(x) %>% unique(),
+                 y = max(data[[metric]])/10*(10+0.6*i),
+                 group_1 = conc_1,
+                 group_2 = conc_2)
+    c1
+  }) %>% Reduce("rbind", .)
+  df_sig <- df_sig %>% 
+    mutate_at(vars(p), scales::number, accuracy = 0.000001)
+  
+  
+  p <- ggplot(data, aes(x = x, y = !!sym(metric))) + 
+    geom_boxplot(aes(group = x), show.legend = FALSE, outlier.shape = NA) +
+    geom_jitter(aes(fill = TCR, shape = bond), size = 2, show.legend = FALSE, width = 0.2) +
+    scale_shape_manual(values = c(slip = 21, catch = 23)) +
+    scale_fill_manual(values = color_TCR) +
+    theme_bw() +
+    theme(panel.grid = element_blank(),
+          axis.text.x = element_text(size = 10, color = "black"),
+          axis.text.y = element_text(size = 10, color = "black"),
+          axis.title.x = element_text(size = 13),
+          axis.title.y = element_text(size = 13)) +
+    guides(fill = guide_legend(override.aes = list(size = 5))) +
+    geom_segment(data = df_sig, aes(x = xmin, xend = xmax, y = y, yend = y)) +
+    geom_text(data = df_sig, aes(x = (xmin + xmax) / 2, y = y, label = p), size = 2.5, vjust = -0.5) +
+    scale_x_continuous(breaks = 1:2, labels = c("catch", "slip")) +
+    xlab(NULL)
+  plist[[metric]] <- p
+}
+wrap_plots(plist, nrow = 1)
+
+
+```
+
+```{r eval=TRUE, include=TRUE}
+sessionInfo()
+```
+
+
+

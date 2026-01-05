@@ -1,0 +1,1038 @@
+---
+title: "Figure S12"
+author: "Runze Xie @ institute of biophysics, 11/07/2025"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = "/home/zeemeeuw/data/TAI-Rmd/V1_data")
+```
+
+### Loading packages
+```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(tibble)
+library(tidyr)
+library(readr)
+library(ArchR)
+library(Seurat)
+library(openxlsx)
+library(readxl)
+library(splines)
+source("/home/zeemeeuw/data/TAI-Rmd/V1_code/utils.R")
+setwd('/home/zeemeeuw/data/TAI-Rmd/V1_data')
+```
+#### Critical: change the directory to your working dir accordingly!
+The DORC matrix was called with FigR. Here we provide called peak-GEX correlation dataframe and MAGIC-smoothed DORC/RNA matrix.
+```{r include = TRUE}
+# dir for mTEC
+mTEC_root <- '/home/zeemeeuw/data/mTEC/'
+
+# dir for mmskin
+mmskin_root <- '/home/zeemeeuw/data/mouse_skin/'
+
+# dir for pituitary
+pit_root <- '/home/zeemeeuw/data/pituitary/'
+
+# dir for TAI-d8sp
+d8sp_root <- '/home/zeemeeuw/data/mmJoint/'
+
+```
+
+### Set parameters for plotting
+```{r include = TRUE}
+color_tech <- c("SCARlink" = "#00008B",
+                "DORC" = '#d0021b')
+
+mmjoint_colors <- c("Quiescent" = "#bbdefb", 
+                    "Priming_1" =  "#519ec6", 
+                    "Priming_2" = "#3971ff",
+                    "Activation_1" = "#a9df91", 
+                    "Activation_2" = "#7eca72", 
+                    "Activation_3" = "#48b352", 
+                    "Effector_1" = "#ffb669", 
+                    "Effector_2" = "#ff882e", 
+                    "Effector-memory_transition_1" = "#cda7c7",
+                    "Effector-memory_transition_2" = "#9e79b6",
+                    "Effector-memory_transition_3" = "#7c4d9f",
+                    "Memory_1" = "#ef999c", 
+                    "Memory_2" = "#eb5e63",
+                    "Memory_3" = "#e53a46")
+```
+
+### DORC-computed Chromatin potential for d8sp
+```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=5}
+load(paste0(d8sp_root, 'RNA/data/lm_ym/d8sp_small_DORC.RData'))
+load(paste0(d8sp_root, 'RNA/data/lm_ym/d8sp_small_mat_smoothed.RData'))
+seu <- readRDS(paste0(d8sp_root, 'RNA/data/lm_ym/d8sp_small.rds'))
+proj <- loadArchRProject(paste0(d8sp_root, 'ATAC/d8sp_rep1'))
+
+meta <- colData(pkm) %>% as.data.frame()
+meta$celltype <- meta$cell_module
+meta$cellnames <- rownames(meta)
+meta$UMAP_1 <- proj@embeddings$UMAP_Combined$df[rownames(meta),1]
+meta$UMAP_2 <- proj@embeddings$UMAP_Combined$df[rownames(meta),2]
+umap <- meta %>% dplyr::select("UMAP_1", "UMAP_2") %>% as.matrix()
+rownames(umap) <- rownames(meta)
+
+groupDF <- meta %>% dplyr::select(Clusters, cellnames)
+trajectory <- c("C3", "C6")
+traj <- get_trajectory(groupDF, group_by = "Clusters", embedding = umap, trajectory = trajectory, preFilterQuantile = 1, postFilterQuantile = 1)
+
+dorcMat_sm_norm <- t(apply(dorcMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
+rnaMat_sm_norm <- t(apply(rnaMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
+idx <- which(rowMeans(dorcMat_sm_norm - rnaMat_sm_norm) > 0)
+
+norm_list <- filter_matrix(dmat = dorcMat_sm_norm[idx,rownames(traj)], rmat = rnaMat_sm_norm[idx,rownames(traj)], scale_max_abs_val = 10, gene_corr_cutoff = 0, scaling = 'minmax', ncore = 12)
+ndmat <- norm_list[["ndmat"]]
+nrmat <- norm_list[["nrmat"]]
+
+embedding <- umap
+embedding_arr_length_list <- calc_velocity(ndmat, nrmat, embedding[rownames(traj),], max_per_cell = 10, metric = 'cosine', cutoff = 0.95)
+embedding_arr_length <- embedding_arr_length_list[[1]]
+arr_length <- embedding_arr_length_list[[2]]
+
+arrow_data <- smooth_arrows(embedding[rownames(traj),], embedding_arr_length, smooth_w = 30, min_count = 5, coef = 1.5, draw_all = FALSE)
+
+data <- meta %>% dplyr::select(celltype, cellnames)
+data$UMAP_1 <- umap[,1]
+data$UMAP_2 <- umap[,2]
+data_sub <- data %>% dplyr::filter(cellnames %in% rownames(traj))
+data_sub$pseudotime <- traj[data_sub$cellnames,]$Trajectory
+
+xrange <- max(data$UMAP_1) - min(data$UMAP_1)
+yrange <- max(data$UMAP_2) - min(data$UMAP_2)
+
+ggplot(data) +
+  geom_point(aes(x = UMAP_1, y = UMAP_2), show.legend = FALSE, size = 0.5, alpha = 0.8, color = 'grey90') +
+  geom_point(data = data_sub, aes(x = UMAP_1, y = UMAP_2, color = pseudotime), show.legend = TRUE, size = 0.5, alpha = 0.8) +
+  theme_classic() +
+  guides(color = guide_colorbar(ticks = FALSE, draw.ulim = FALSE, draw.llim = FALSE, 
+                                theme = theme(legend.ticks = element_blank()))) +
+  geom_segment(data = arrow_data, aes(x = x_start, y = y_start, xend = x_end, yend = y_end), arrow = arrow(length = unit(2 , 'pt'), type = "closed"), lwd = 0.3, color = 'black') +
+  coord_fixed(ratio = xrange/yrange) +
+  scale_color_gradientn(colors = rev(choose_colorset("Spectral")),
+                        limits = c(0, 100),
+                        oob = scales::oob_squish)
+
+ggplot(data) +
+  geom_point(aes(x = UMAP_1, y = UMAP_2), show.legend = FALSE, size = 0.5, alpha = 0.8, color = 'grey90') +
+  geom_point(data = data_sub, aes(x = UMAP_1, y = UMAP_2, color = celltype), show.legend = TRUE, size = 0.5, alpha = 0.8) +
+  theme_classic() +
+  guides(color = guide_legend(override.aes = list(size = 5))) +
+  coord_fixed(ratio = xrange/yrange) +
+  scale_color_manual(values = mmjoint_colors)
+
+```
+
+### DORC-computed Checkpoints for d8sp
+```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=5}
+k <- 10
+meta <- colData(pkm) %>% as.data.frame()
+meta$celltype <- meta$cell_module
+meta$cellnames <- rownames(meta)
+meta$UMAP_1 <- proj@embeddings$UMAP_Combined$df[rownames(meta),1]
+meta$UMAP_2 <- proj@embeddings$UMAP_Combined$df[rownames(meta),2]
+umap <- meta %>% dplyr::select("UMAP_1", "UMAP_2") %>% as.matrix()
+rownames(umap) <- rownames(meta)
+
+groupDF <- meta %>% dplyr::select(Clusters, cellnames)
+trajectory <- c("C3", "C6")
+traj <- get_trajectory(groupDF, group_by = "Clusters", embedding = umap, trajectory = trajectory, preFilterQuantile = 1, postFilterQuantile = 1)
+
+dorcMat_sm_norm <- t(apply(dorcMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
+rnaMat_sm_norm <- t(apply(rnaMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
+idx <- which(rowMeans(dorcMat_sm_norm - rnaMat_sm_norm) > 0)
+
+norm_list <- filter_matrix(dmat = dorcMat_sm_norm[idx,rownames(traj)], rmat = rnaMat_sm_norm[idx,rownames(traj)], scale_max_abs_val = 10, gene_corr_cutoff = 0, scaling = 'minmax', ncore = 12)
+ndmat <- norm_list[["ndmat"]]
+nrmat <- norm_list[["nrmat"]]
+
+embedding <- umap
+
+df_time <- calc_neigh(traj, ndmat, nrmat, embedding[rownames(traj),], max_per_cell = k, metric = 'cosine', cutoff = 0.95)
+df_time_corrected <- df_time %>% 
+  dplyr::mutate(diff = new_time - old_time)
+df_time_corrected$y <- df_time_corrected$diff
+df_time_corrected$x <- df_time_corrected$old_time
+
+# spline fitting
+library(splines)
+knots <- 1:50 * 2 -1
+fit <- lm(y ~ ns(x, knots = knots, Boundary.knots = c(0, 100)), data = df_time_corrected)
+predict_y <- function(x_new) {
+  predict(fit, newdata = data.frame(x = x_new))
+}
+
+# calc roots
+roots <- list()
+for (i in 0:99) {
+  f <- function(x) predict_y(x)
+  root <- tryCatch({
+    # if(predict_y(i + 1) - predict_y(i) < 1){return(NA)}
+    uniroot(f, interval = c(i, i + 1))$root
+  },
+  error = function(e) NA 
+  )
+  roots[[i + 1]] <- root
+}
+valid_roots <- unlist(roots[!is.na(roots)])
+spline_deriv <- function(x) {
+  h <- 1e-5
+  (predict(fit, newdata = data.frame(x = x + h)) - 
+      predict(fit, newdata = data.frame(x = x - h))) / (2 * h)
+}
+
+derivatives_at_roots <- sapply(valid_roots, spline_deriv)
+valid_roots <- valid_roots[derivatives_at_roots > 0]
+
+find_extrema <- function(a, b, n = 100) {
+  x_grid <- seq(a, b, length.out = n)  
+  deriv_values <- sapply(x_grid, spline_deriv)
+  extrema <- c()
+  for (i in 2:(n - 1)) {
+    if (deriv_values[i] * deriv_values[i + 1] < 0) { 
+      root <- uniroot(
+        spline_deriv,
+        interval = c(x_grid[i], x_grid[i + 1]),
+        tol = 1e-6
+      )$root
+      extrema <- c(extrema, root)
+    }
+  }
+  return(extrema)
+}
+
+extrema_x <- find_extrema(0, 100)
+extreme_filter <- sapply(valid_roots, function(x){
+  x_start <- tail(extrema_x[which(extrema_x < x)], 1)
+  if(length(x_start) == 0) x_start <- 0
+  x_end <- head(extrema_x[which(extrema_x > x)], 1)
+  if(length(x_end) == 0) x_end <- 100
+  predict_y(x_end) - predict_y(x_start) > 2
+})
+valid_roots <- valid_roots[extreme_filter]
+print(valid_roots)
+
+df_time_corrected$tech = "DORC"
+df_time_corrected$diff_pred <- predict_y(df_time_corrected$old_time)
+
+
+ggplot(df_time_corrected, aes(x = old_time, color = tech)) +
+  geom_line(aes(y = diff_pred), size = 1) +
+  theme_bw() +
+  geom_hline(yintercept = 0, linetype = 2) +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(size = 8, color = "black"),
+        axis.text.y = element_text(size = 8, color = "black"),
+        axis.title.x = element_text(size = 13),
+        axis.title.y = element_text(size = 13)) +
+  scale_color_manual(values = color_tech) +
+  geom_vline(xintercept = valid_roots, linetype = 2, color = "#4d004b") +
+  xlim(0, 100) +
+  coord_fixed(100 / (max(df_time_corrected$diff_pred) - min(df_time_corrected$diff_pred))) +
+  ggtitle(paste0("B-spline, k = ", k))
+
+```
+
+
+### SCARlink-computed Chromatin potential for d8sp
+```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=5}
+meta <- read_delim(paste0(d8sp_root, 'scarlink/cell_info.txt')) %>% as.data.frame()
+meta$celltype <- meta$cell_module
+rownames(meta) <- meta$cellnames
+
+dorcmat <- t(as.matrix(read_tsv(paste0(d8sp_root, 'scarlink/scarlink_out/pred_unsmooth.csv'))))
+colnames(dorcmat) <- meta$cellnames
+
+rnamat <- t(as.matrix(read_tsv(paste0(d8sp_root, 'scarlink/scarlink_out/obs_unsmooth.csv'))))
+colnames(rnamat) <- meta$cellnames
+
+umap <- seu@reductions$UMAP_LSI_Combined@cell.embeddings
+colnames(umap) <- c("UMAP_1", "UMAP_2")
+umap <- as.matrix(umap)
+
+meta$UMAP_1 <- umap[,1]
+meta$UMAP_2 <- umap[,2]
+  
+load(paste0(d8sp_root, 'RNA/data/lm_ym/d8sp_small_scarlink_smoothed.RData'))
+
+groupDF <- meta %>% dplyr::select(Clusters, cellnames)
+trajectory <- c("C3", "C6")
+traj <- get_trajectory(groupDF, group_by = "Clusters", embedding = umap, trajectory = trajectory, preFilterQuantile = 1, postFilterQuantile = 1)
+
+dorcMat_sm_norm <- t(apply(dorcMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
+rnaMat_sm_norm <- t(apply(rnaMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
+idx <- which(rowMeans(dorcMat_sm_norm - rnaMat_sm_norm) > 0)
+
+norm_list <- filter_matrix(dmat = dorcMat_sm_norm[idx,rownames(traj)], rmat = rnaMat_sm_norm[idx,rownames(traj)], scale_max_abs_val = 10, gene_corr_cutoff = 0, scaling = 'minmax', ncore = 12)
+ndmat <- norm_list[["ndmat"]]
+nrmat <- norm_list[["nrmat"]]
+
+embedding <- umap
+embedding_arr_length_list <- calc_velocity(ndmat, nrmat, embedding[rownames(traj),], max_per_cell = 10, metric = 'cosine', cutoff = 0.95)
+embedding_arr_length <- embedding_arr_length_list[[1]]
+arr_length <- embedding_arr_length_list[[2]]
+
+arrow_data <- smooth_arrows(embedding[rownames(traj),], embedding_arr_length, smooth_w = 30, min_count = 5, coef = 1.5, draw_all = FALSE)
+
+data <- meta %>% dplyr::select(celltype, cellnames)
+data$UMAP_1 <- umap[,1]
+data$UMAP_2 <- umap[,2]
+data_sub <- data %>% dplyr::filter(cellnames %in% rownames(traj))
+data_sub$pseudotime <- traj[data_sub$cellnames,]$Trajectory
+
+xrange <- max(data$UMAP_1) - min(data$UMAP_1)
+yrange <- max(data$UMAP_2) - min(data$UMAP_2)
+  
+ggplot(data) +
+  geom_point(aes(x = UMAP_1, y = UMAP_2), show.legend = FALSE, size = 0.5, alpha = 0.8, color = 'grey90') +
+  geom_point(data = data_sub, aes(x = UMAP_1, y = UMAP_2, color = pseudotime), show.legend = TRUE, size = 0.5, alpha = 0.8) +
+  theme_classic() +
+  guides(color = guide_colorbar(ticks = FALSE, draw.ulim = FALSE, draw.llim = FALSE, 
+                                theme = theme(legend.ticks = element_blank()))) +
+  geom_segment(data = arrow_data, aes(x = x_start, y = y_start, xend = x_end, yend = y_end), arrow = arrow(length = unit(2 , 'pt'), type = "closed"), lwd = 0.3, color = 'black') +
+  coord_fixed(ratio = xrange/yrange) +
+  scale_color_gradientn(colors = rev(choose_colorset("Spectral")),
+                        limits = c(0, 100),
+                        oob = scales::oob_squish)
+
+```
+
+
+### SCARlink-computed Checkpoints for d8sp
+```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=5}
+k <- 10
+groupDF <- meta %>% dplyr::select(Clusters, cellnames)
+trajectory <- c("C3", "C6")
+traj <- get_trajectory(groupDF, group_by = "Clusters", embedding = umap, trajectory = trajectory, preFilterQuantile = 1, postFilterQuantile = 1)
+
+dorcMat_sm_norm <- t(apply(dorcMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
+rnaMat_sm_norm <- t(apply(rnaMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
+idx <- which(rowMeans(dorcMat_sm_norm - rnaMat_sm_norm) > 0)
+
+norm_list <- filter_matrix(dmat = dorcMat_sm_norm[idx,rownames(traj)], rmat = rnaMat_sm_norm[idx,rownames(traj)], scale_max_abs_val = 10, gene_corr_cutoff = 0, scaling = 'minmax', ncore = 12)
+ndmat <- norm_list[["ndmat"]]
+nrmat <- norm_list[["nrmat"]]
+
+embedding <- umap
+
+df_time <- calc_neigh(traj, ndmat, nrmat, embedding[rownames(traj),], max_per_cell = k, metric = 'cosine', cutoff = 0.95)
+df_time_corrected <- df_time %>% 
+  dplyr::mutate(diff = new_time - old_time)
+df_time_corrected$y <- df_time_corrected$diff
+df_time_corrected$x <- df_time_corrected$old_time
+
+# spline fitting
+library(splines)
+knots <- 1:50 * 2 -1
+fit <- lm(y ~ ns(x, knots = knots, Boundary.knots = c(0, 100)), data = df_time_corrected)
+predict_y <- function(x_new) {
+  predict(fit, newdata = data.frame(x = x_new))
+}
+
+# calc roots
+roots <- list()
+for (i in 0:99) {
+  f <- function(x) predict_y(x)
+  root <- tryCatch({
+    # if(predict_y(i + 1) - predict_y(i) < 1){return(NA)}
+    uniroot(f, interval = c(i, i + 1))$root
+  },
+  error = function(e) NA 
+  )
+  roots[[i + 1]] <- root
+}
+valid_roots <- unlist(roots[!is.na(roots)])
+spline_deriv <- function(x) {
+  h <- 1e-5
+  (predict(fit, newdata = data.frame(x = x + h)) - 
+      predict(fit, newdata = data.frame(x = x - h))) / (2 * h)
+}
+
+derivatives_at_roots <- sapply(valid_roots, spline_deriv)
+valid_roots <- valid_roots[derivatives_at_roots > 0]
+
+find_extrema <- function(a, b, n = 100) {
+  x_grid <- seq(a, b, length.out = n)  
+  deriv_values <- sapply(x_grid, spline_deriv)
+  extrema <- c()
+  for (i in 2:(n - 1)) {
+    if (deriv_values[i] * deriv_values[i + 1] < 0) { 
+      root <- uniroot(
+        spline_deriv,
+        interval = c(x_grid[i], x_grid[i + 1]),
+        tol = 1e-6
+      )$root
+      extrema <- c(extrema, root)
+    }
+  }
+  return(extrema)
+}
+
+extrema_x <- find_extrema(0, 100)
+extreme_filter <- sapply(valid_roots, function(x){
+  x_start <- tail(extrema_x[which(extrema_x < x)], 1)
+  if(length(x_start) == 0) x_start <- 0
+  x_end <- head(extrema_x[which(extrema_x > x)], 1)
+  if(length(x_end) == 0) x_end <- 100
+  predict_y(x_end) - predict_y(x_start) > 2
+})
+valid_roots <- valid_roots[extreme_filter]
+print(valid_roots)
+
+df_time_corrected$tech = "SCARlink"
+df_time_corrected$diff_pred <- predict_y(df_time_corrected$old_time)
+
+
+ggplot(df_time_corrected, aes(x = old_time, color = tech)) +
+  geom_line(aes(y = diff_pred), size = 1) +
+  theme_bw() +
+  geom_hline(yintercept = 0, linetype = 2) +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(size = 8, color = "black"),
+        axis.text.y = element_text(size = 8, color = "black"),
+        axis.title.x = element_text(size = 13),
+        axis.title.y = element_text(size = 13)) +
+  scale_color_manual(values = color_tech) +
+  geom_vline(xintercept = valid_roots, linetype = 2, color = "#4d004b") +
+  xlim(0, 100) +
+  coord_fixed(100 / (max(df_time_corrected$diff_pred) - min(df_time_corrected$diff_pred))) +
+  ggtitle(paste0("B-spline, k = ", k))
+
+
+```
+
+
+### SCARlink-computed chromatin potential for mTEC
+```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=5}
+
+color_mTEC <- c("Transitional" = "#F7B4B4", 
+                "Early mature" = "#CAB2D6", 
+                "Mid mature" = "#a6bddb", 
+                "Late mature" = "#ABDEB6", 
+                "Immature" = "#fbdf72")
+
+seu <- readRDS(paste0(mTEC_root, 'RNA/mm_mTEC_wo_mimetic.rds'))
+proj <- loadArchRProject(paste0(mTEC_root, 'ATAC/mm_mTEC_wo_mimetic'))
+meta <- read_delim(paste0(mTEC_root, 'scarlink/cell_info.txt')) %>% as.data.frame()
+meta$celltype <- seu$celltype[meta$cellnames]
+rownames(meta) <- meta$cellnames
+
+dorcmat <- t(as.matrix(read_tsv(paste0(mTEC_root, 'scarlink/scarlink_out/pred_unsmooth.csv'))))
+colnames(dorcmat) <- meta$cellnames
+
+rnamat <- t(as.matrix(read_tsv(paste0(mTEC_root, 'scarlink/scarlink_out/obs_unsmooth.csv'))))
+colnames(rnamat) <- meta$cellnames
+
+umap <- seu@reductions$PHATE_2@cell.embeddings
+colnames(umap) <- c("UMAP_1", "UMAP_2")
+umap <- as.matrix(umap)
+
+meta$UMAP_1 <- umap[,1]
+meta$UMAP_2 <- umap[,2]
+
+load(paste0(mTEC_root, "RNA/mm_mTEC_wo_mimetic_scarlink_smoothed.RData"))
+
+groupDF <- meta %>% dplyr::select(celltype, cellnames)
+trajectory <- c("Immature", "Transitional", "Early mature", "Mid mature", "Late mature")
+traj <- get_trajectory(groupDF, group_by = "celltype", embedding = umap, trajectory = trajectory, preFilterQuantile = 1, postFilterQuantile = 1)
+
+dorcMat_sm_norm <- t(apply(dorcMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
+rnaMat_sm_norm <- t(apply(rnaMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
+idx <- which(rowMeans(dorcMat_sm_norm - rnaMat_sm_norm) > 0)
+
+norm_list <- filter_matrix(dmat = dorcMat_sm_norm[idx,rownames(traj)], rmat = rnaMat_sm_norm[idx,rownames(traj)], scale_max_abs_val = 10, gene_corr_cutoff = 0, scaling = 'minmax', ncore = 12)
+ndmat <- norm_list[["ndmat"]]
+nrmat <- norm_list[["nrmat"]]
+
+embedding <- umap
+embedding_arr_length_list <- calc_velocity(ndmat, nrmat, embedding[rownames(traj),], max_per_cell = 10, metric = 'cosine', cutoff = 0.95)
+embedding_arr_length <- embedding_arr_length_list[[1]]
+arr_length <- embedding_arr_length_list[[2]]
+
+arrow_data <- smooth_arrows(embedding[rownames(traj),], embedding_arr_length, smooth_w = 30, min_count = 5, coef = 1.5, draw_all = FALSE)
+
+data <- meta %>% dplyr::select(celltype, cellnames)
+data$UMAP_1 <- umap[,1]
+data$UMAP_2 <- umap[,2]
+data_sub <- data %>% dplyr::filter(cellnames %in% rownames(traj))
+data_sub$pseudotime <- traj[data_sub$cellnames,]$Trajectory
+
+xrange <- max(data$UMAP_1) - min(data$UMAP_1)
+yrange <- max(data$UMAP_2) - min(data$UMAP_2)
+
+
+
+
+
+ggplot(data) +
+  geom_point(aes(x = UMAP_1, y = UMAP_2), show.legend = FALSE, size = 0.5, alpha = 0.8, color = 'grey90') +
+  geom_point(data = data_sub, aes(x = UMAP_1, y = UMAP_2, color = pseudotime), show.legend = TRUE, size = 0.5, alpha = 0.8) +
+  theme_classic() +
+  guides(color = guide_colorbar(ticks = FALSE, draw.ulim = FALSE, draw.llim = FALSE, 
+                                theme = theme(legend.ticks = element_blank()))) +
+  geom_segment(data = arrow_data, aes(x = x_start, y = y_start, xend = x_end, yend = y_end), arrow = arrow(length = unit(2 , 'pt'), type = "closed"), lwd = 0.3, color = 'black') +
+  coord_fixed(ratio = xrange/yrange) +
+  scale_color_gradientn(colors = rev(choose_colorset("Spectral")),
+                        limits = c(0, 100),
+                        oob = scales::oob_squish)
+
+```
+
+### SCARlink-computed checkpoints for mTEC
+```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=5}
+k <- 50
+
+groupDF <- meta %>% dplyr::select(celltype, cellnames)
+trajectory <- c("Immature", "Transitional", "Early mature", "Mid mature", "Late mature")
+traj <- get_trajectory(groupDF, group_by = "celltype", embedding = umap, trajectory = trajectory, preFilterQuantile = 1, postFilterQuantile = 1)
+
+dorcMat_sm_norm <- t(apply(dorcMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
+rnaMat_sm_norm <- t(apply(rnaMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
+idx <- which(rowMeans(dorcMat_sm_norm - rnaMat_sm_norm) > 0)
+
+norm_list <- filter_matrix(dmat = dorcMat_sm_norm[idx,rownames(traj)], rmat = rnaMat_sm_norm[idx,rownames(traj)], scale_max_abs_val = 10, gene_corr_cutoff = 0, scaling = 'minmax', ncore = 12)
+ndmat <- norm_list[["ndmat"]]
+nrmat <- norm_list[["nrmat"]]
+  
+embedding <- umap
+
+df_time <- calc_neigh(traj, ndmat, nrmat, embedding[rownames(traj),], max_per_cell = k, metric = 'cosine', cutoff = 0.95)
+df_time_corrected <- df_time %>% 
+  dplyr::mutate(diff = new_time - old_time)
+df_time_corrected$y <- df_time_corrected$diff
+df_time_corrected$x <- df_time_corrected$old_time
+
+# spline fitting
+library(splines)
+knots <- 1:50 * 2 -1
+fit <- lm(y ~ ns(x, knots = knots, Boundary.knots = c(0, 100)), data = df_time_corrected)
+predict_y <- function(x_new) {
+  predict(fit, newdata = data.frame(x = x_new))
+}
+
+# calc roots
+roots <- list()
+for (i in 0:99) {
+  f <- function(x) predict_y(x)
+  root <- tryCatch({
+    # if(predict_y(i + 1) - predict_y(i) < 1){return(NA)}
+    uniroot(f, interval = c(i, i + 1))$root
+  },
+  error = function(e) NA 
+  )
+  roots[[i + 1]] <- root
+}
+valid_roots <- unlist(roots[!is.na(roots)])
+spline_deriv <- function(x) {
+  h <- 1e-5
+  (predict(fit, newdata = data.frame(x = x + h)) - 
+      predict(fit, newdata = data.frame(x = x - h))) / (2 * h)
+}
+
+derivatives_at_roots <- sapply(valid_roots, spline_deriv)
+valid_roots <- valid_roots[derivatives_at_roots > 0]
+
+find_extrema <- function(a, b, n = 100) {
+  x_grid <- seq(a, b, length.out = n)  
+  deriv_values <- sapply(x_grid, spline_deriv)
+  extrema <- c()
+  for (i in 2:(n - 1)) {
+    if (deriv_values[i] * deriv_values[i + 1] < 0) { 
+      root <- uniroot(
+        spline_deriv,
+        interval = c(x_grid[i], x_grid[i + 1]),
+        tol = 1e-6
+      )$root
+      extrema <- c(extrema, root)
+    }
+  }
+  return(extrema)
+}
+
+extrema_x <- find_extrema(0, 100)
+extreme_filter <- sapply(valid_roots, function(x){
+  x_start <- tail(extrema_x[which(extrema_x < x)], 1)
+  x_end <- head(extrema_x[which(extrema_x > x)], 1)
+  predict_y(x_end) - predict_y(x_start) > 2
+})
+valid_roots <- valid_roots[extreme_filter]
+print(valid_roots)
+
+df_time_corrected$tech = "SCARlink"
+df_time_corrected$diff_pred <- predict_y(df_time_corrected$old_time)
+
+
+ggplot(df_time_corrected, aes(x = old_time, color = tech)) +
+  geom_line(aes(y = diff_pred), size = 1) +
+  theme_bw() +
+  geom_hline(yintercept = 0, linetype = 2) +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(size = 8, color = "black"),
+        axis.text.y = element_text(size = 8, color = "black"),
+        axis.title.x = element_text(size = 13),
+        axis.title.y = element_text(size = 13)) +
+  scale_color_manual(values = color_tech) +
+  geom_vline(xintercept = valid_roots, linetype = 2, color = "#4d004b") +
+  xlim(0, 100) +
+  coord_fixed(100 / (max(df_time_corrected$diff_pred) - min(df_time_corrected$diff_pred))) +
+  ggtitle(paste0("B-spline, k = ", k))
+
+
+```
+
+### SCARlink-computed chromatin potential for mouse skin
+```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=5}
+
+color_celltype <- c("Hair Shaft-cuticle.cortex" = "#FF7F00",
+                    "IRS" = "#fe9376",
+                    "Medulla" = "#7BAFDE",
+                    "TAC-1" = "#FFE060",
+                    "TAC-2" = "#B2DF8A")
+
+meta <- read_tsv(paste0(mmskin_root, 'scarlink/pred_meta.tsv'))
+meta$cellnames <- paste0(meta$cell_name_rna)
+
+genes <- read_tsv(paste0(mmskin_root, 'scarlink/pred_genes.tsv'), col_names = "genes")
+dorcMat_sm <- t(readMM(paste0(mmskin_root, 'scarlink/pred_mtx.mtx')))
+rownames(dorcMat_sm) <- genes$genes
+colnames(dorcMat_sm) <- meta$cellnames
+
+
+genes <- read_tsv(paste0(mmskin_root, 'scarlink/obs_genes.tsv'), col_names = "genes")
+rnaMat_sm <-  t(readMM(paste0(mmskin_root, 'scarlink/obs_mtx.mtx')))
+rownames(rnaMat_sm) <- genes$genes
+colnames(rnaMat_sm) <- meta$cellnames
+
+umap <- read.delim(paste0(mmskin_root, 'scarlink/mmskin_umap.tsv'), header = FALSE)
+colnames(umap) <- c("UMAP_1", "UMAP_2")
+rownames(umap) <- meta$cellnames
+umap <- as.matrix(umap)
+
+
+meta <- read_tsv(paste0(mmskin_root, 'scarlink/pred_meta.tsv'))
+meta$cellnames <- paste0(meta$cell_name_rna)
+umap <- read.delim(paste0(mmskin_root, 'scarlink/mmskin_umap.tsv'), header = FALSE)
+colnames(umap) <- c("UMAP_1", "UMAP_2")
+rownames(umap) <- meta$cellnames
+umap <- as.matrix(umap)
+meta$UMAP_1 <- umap[,1]
+meta$UMAP_2 <- umap[,2]
+meta$celltype[meta$UMAP_2 > -10] <- NA
+
+groupDF <- meta %>% dplyr::select(celltype, cellnames) %>%
+  column_to_rownames("cellnames")
+
+trajectory <- c("TAC-1", "TAC-2", "Hair Shaft-cuticle.cortex")
+traj <- get_trajectory(groupDF, group_by = "celltype", embedding = umap, trajectory = trajectory, preFilterQuantile = 0.9, postFilterQuantile = 0.9)
+
+dorcMat_sm_norm <- t(apply(dorcMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
+rnaMat_sm_norm <- t(apply(rnaMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
+idx <- which(rowMeans(dorcMat_sm_norm - rnaMat_sm_norm) > 0)
+
+norm_list <- filter_matrix(dmat = dorcMat_sm[idx,rownames(traj)], rmat = rnaMat_sm[idx,rownames(traj)], scale_max_abs_val = 10, gene_corr_cutoff = 0, scaling = 'minmax', ncore = 12)
+ndmat <- norm_list[["ndmat"]]
+nrmat <- norm_list[["nrmat"]]
+
+embedding <- umap
+embedding_arr_length_list <- calc_velocity(ndmat, nrmat, embedding[rownames(traj),], max_per_cell = 10, metric = 'cosine', cutoff = 0.95)
+embedding_arr_length <- embedding_arr_length_list[[1]]
+arr_length <- embedding_arr_length_list[[2]]
+
+arrow_data <- smooth_arrows(embedding[rownames(traj),], embedding_arr_length, smooth_w = 30, min_count = 5, coef = 1.5, draw_all = FALSE)
+
+data <- meta %>% dplyr::select(celltype, Clusters, cellnames)
+data$UMAP_1 <- umap[,1]
+data$UMAP_2 <- umap[,2]
+data_sub <- data %>% dplyr::filter(cellnames %in% rownames(traj))
+data_sub$pseudotime <- traj[data_sub$cellnames,]$Trajectory
+
+xrange <- max(data$UMAP_1) - min(data$UMAP_1)
+yrange <- max(data$UMAP_2) - min(data$UMAP_2)
+
+
+
+ggplot(data) +
+  geom_point(aes(x = UMAP_1, y = UMAP_2), show.legend = FALSE, size = 0.5, alpha = 0.8, color = 'grey90') +
+  geom_point(data = data_sub, aes(x = UMAP_1, y = UMAP_2, color = pseudotime), show.legend = TRUE, size = 0.5, alpha = 0.8) +
+  theme_classic() +
+  guides(color = guide_colorbar(ticks = FALSE, draw.ulim = FALSE, draw.llim = FALSE, 
+                                theme = theme(legend.ticks = element_blank()))) +
+  geom_segment(data = arrow_data, aes(x = x_start, y = y_start, xend = x_end, yend = y_end), arrow = arrow(length = unit(2 , 'pt'), type = "closed"), lwd = 0.3, color = 'black') +
+  coord_fixed(ratio = xrange/yrange) +
+  scale_color_gradientn(colors = rev(choose_colorset("Spectral")),
+                        limits = c(0, 100),
+                        oob = scales::oob_squish)
+
+```
+
+### SCARlink-computed checkpoints for mouse skin
+```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=5}
+k <- 10
+
+groupDF <- meta %>% dplyr::select(celltype, cellnames) %>%
+  column_to_rownames("cellnames")
+
+trajectory <- c("TAC-1", "TAC-2", "Hair Shaft-cuticle.cortex")
+traj <- get_trajectory(groupDF, group_by = "celltype", embedding = umap, trajectory = trajectory, preFilterQuantile = 0.9, postFilterQuantile = 0.9)
+
+dorcMat_sm_norm <- t(apply(dorcMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
+rnaMat_sm_norm <- t(apply(rnaMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
+idx <- which(rowMeans(dorcMat_sm_norm - rnaMat_sm_norm) > 0)
+
+norm_list <- filter_matrix(dmat = dorcMat_sm[idx,rownames(traj)], rmat = rnaMat_sm[idx,rownames(traj)], scale_max_abs_val = 5, gene_corr_cutoff = 0, scaling = 'minmax', ncore = 12)
+ndmat <- norm_list[["ndmat"]]
+nrmat <- norm_list[["nrmat"]]
+
+
+embedding <- umap
+
+df_time <- calc_neigh(traj, ndmat, nrmat, embedding[rownames(traj),], max_per_cell = k, metric = 'cosine', cutoff = 0.95)
+df_time_corrected <- df_time %>% 
+  dplyr::mutate(diff = new_time - old_time)
+df_time_corrected$y <- df_time_corrected$diff
+df_time_corrected$x <- df_time_corrected$old_time
+
+# spline fitting
+library(splines)
+knots <- 1:50 * 2 -1
+fit <- lm(y ~ ns(x, knots = knots, Boundary.knots = c(0, 100)), data = df_time_corrected)
+predict_y <- function(x_new) {
+  predict(fit, newdata = data.frame(x = x_new))
+}
+
+# calc roots
+roots <- list()
+for (i in 0:99) {
+  f <- function(x) predict_y(x)
+  root <- tryCatch({
+    # if(predict_y(i + 1) - predict_y(i) < 1){return(NA)}
+    uniroot(f, interval = c(i, i + 1))$root
+  },
+  error = function(e) NA 
+  )
+  roots[[i + 1]] <- root
+}
+valid_roots <- unlist(roots[!is.na(roots)])
+spline_deriv <- function(x) {
+  h <- 1e-5
+  (predict(fit, newdata = data.frame(x = x + h)) - 
+      predict(fit, newdata = data.frame(x = x - h))) / (2 * h)
+}
+
+derivatives_at_roots <- sapply(valid_roots, spline_deriv)
+valid_roots <- valid_roots[derivatives_at_roots > 0]
+
+find_extrema <- function(a, b, n = 100) {
+  x_grid <- seq(a, b, length.out = n)  
+  deriv_values <- sapply(x_grid, spline_deriv)
+  extrema <- c()
+  for (i in 2:(n - 1)) {
+    if (deriv_values[i] * deriv_values[i + 1] < 0) { 
+      root <- uniroot(
+        spline_deriv,
+        interval = c(x_grid[i], x_grid[i + 1]),
+        tol = 1e-6
+      )$root
+      extrema <- c(extrema, root)
+    }
+  }
+  return(extrema)
+}
+
+extrema_x <- find_extrema(0, 100)
+extreme_filter <- sapply(valid_roots, function(x){
+  x_start <- tail(extrema_x[which(extrema_x < x)], 1)
+  if(length(x_start) == 0) x_start <- 0
+  x_end <- head(extrema_x[which(extrema_x > x)], 1)
+  if(length(x_end) == 0) x_end <- 100
+  predict_y(x_end) - predict_y(x_start) > 4
+})
+valid_roots <- valid_roots[extreme_filter]
+print(valid_roots)
+
+df_time_corrected$tech = "SCARlink"
+df_time_corrected$diff_pred <- predict_y(df_time_corrected$old_time)
+
+
+ggplot(df_time_corrected, aes(x = old_time, color = tech)) +
+  geom_line(aes(y = diff_pred), size = 1) +
+  theme_bw() +
+  geom_hline(yintercept = 0, linetype = 2) +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(size = 8, color = "black"),
+        axis.text.y = element_text(size = 8, color = "black"),
+        axis.title.x = element_text(size = 13),
+        axis.title.y = element_text(size = 13)) +
+  scale_color_manual(values = color_tech) +
+  geom_vline(xintercept = valid_roots, linetype = 2, color = "#4d004b") +
+  xlim(0, 100) +
+  coord_fixed(100 / (max(df_time_corrected$diff_pred) - min(df_time_corrected$diff_pred))) +
+  ggtitle(paste0("B-spline, k = ", k))
+
+
+
+
+```
+
+
+### SCARlink-computed chromatin potential for mTEC
+```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=5}
+
+color_celltype <- c("Corticotropes" = "#F7962E",
+                    "Gonadotropes" = "#FFB6C1",
+                    "Lactotropes" = "#7BAFDE",
+                    "PSC" = "#E4EBB6",
+                    "Pregonadotropes" = "#B2DF8A",
+                    "Somatotropes" = "#9398D2FF",
+                    "Thyrotropes" = "#FFE060")
+
+
+meta <- read_tsv(paste0(pit_root, 'scarlink/pred_meta.tsv'))
+meta$cellnames <- meta$cell_name
+
+genes <- read_tsv(paste0(pit_root, 'scarlink/pred_genes.tsv'), col_names = "genes")
+dorcMat_sm <- t(readMM(paste0(pit_root, 'scarlink/pred_mtx.mtx')))
+rownames(dorcMat_sm) <- genes$genes
+colnames(dorcMat_sm) <- meta$cellnames
+dorcMat_sm <- as.matrix(dorcMat_sm)
+
+genes <- read_tsv(paste0(pit_root, 'scarlink/obs_genes.tsv'), col_names = "genes")
+rnaMat_sm <- t(readMM(paste0(pit_root, 'scarlink/obs_mtx.mtx')))
+rownames(rnaMat_sm) <- genes$genes
+colnames(rnaMat_sm) <- meta$cellnames
+rnaMat_sm <- as.matrix(rnaMat_sm)
+
+umap <- read.delim(paste0(pit_root, 'scarlink/pituitary_umap.tsv'), header = FALSE)
+colnames(umap) <- c("UMAP_1", "UMAP_2")
+rownames(umap) <- meta$cellnames
+umap <- as.matrix(umap)
+
+dorcGenes <- read.delim(paste0(pit_root, 'scarlink/dorcGenes.tsv'), header = FALSE)$V2
+gg <- intersect(dorcGenes, rownames(dorcMat_sm))
+
+dorcMat_sm <- dorcMat_sm[gg,]
+rnaMat_sm <- rnaMat_sm[gg,]
+
+idx <- apply(dorcMat_sm, 1, sd) > 0 & apply(rnaMat_sm, 1, sd) > 0
+
+dorcMat_sm <- dorcMat_sm[idx,]
+rnaMat_sm <- rnaMat_sm[idx,]
+
+
+groupDF <- meta %>% dplyr::select(celltype, cellnames) %>%
+  column_to_rownames("cellnames")
+trajectory <- c("PSC", "Pregonadotropes", "Gonadotropes")
+traj <- get_trajectory(groupDF, group_by = "celltype", embedding = umap, trajectory = trajectory, preFilterQuantile = 1, postFilterQuantile = 1)
+
+idx <- apply(dorcMat_sm[,rownames(traj)], 1, sd) > 0 & apply(rnaMat_sm[,rownames(traj)], 1, sd) > 0
+dorcMat_sm <- dorcMat_sm[idx,]
+rnaMat_sm <- rnaMat_sm[idx,]
+
+dorcMat_sm_norm <- t(apply(dorcMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
+rnaMat_sm_norm <- t(apply(rnaMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
+idx <- which(rowMeans(dorcMat_sm_norm - rnaMat_sm_norm) > 0)
+
+
+norm_list <- filter_matrix(dmat = dorcMat_sm[idx,rownames(traj)], rmat = rnaMat_sm[idx,rownames(traj)], scale_max_abs_val = 10, gene_corr_cutoff = 0, scaling = 'minmax', ncore = 12)
+ndmat <- norm_list[["ndmat"]]
+nrmat <- norm_list[["nrmat"]]
+
+embedding <- umap
+embedding_arr_length_list <- calc_velocity(ndmat, nrmat, embedding[rownames(traj),], max_per_cell = 10, metric = 'cosine', cutoff = 0.95)
+embedding_arr_length <- embedding_arr_length_list[[1]]
+arr_length <- embedding_arr_length_list[[2]]
+
+arrow_data <- smooth_arrows(embedding[rownames(traj),], embedding_arr_length, smooth_w = 70, min_count = 2, coef = 1.5, draw_all = FALSE)
+
+data <- meta %>% dplyr::select(celltype, Clusters, cellnames)
+data$UMAP_1 <- umap[,1]
+data$UMAP_2 <- umap[,2]
+data_sub <- data %>% dplyr::filter(cellnames %in% rownames(traj))
+data_sub$pseudotime <- traj[data_sub$cellnames,]$Trajectory
+
+xrange <- max(data$UMAP_1) - min(data$UMAP_1)
+yrange <- max(data$UMAP_2) - min(data$UMAP_2)
+  
+ggplot(data) +
+    geom_point(aes(x = UMAP_1, y = UMAP_2), show.legend = FALSE, size = 0.5, alpha = 0.8, color = 'grey90') +
+    geom_point(data = data_sub, aes(x = UMAP_1, y = UMAP_2, color = pseudotime), show.legend = TRUE, size = 0.5, alpha = 0.8) +
+    theme_classic() +
+    guides(color = guide_colorbar(ticks = FALSE, draw.ulim = FALSE, draw.llim = FALSE, 
+                                  theme = theme(legend.ticks = element_blank()))) +
+    geom_segment(data = arrow_data, aes(x = x_start, y = y_start, xend = x_end, yend = y_end), arrow = arrow(length = unit(1.5 , 'pt'), type = "closed"), lwd = 0.3, color = 'black') +
+    coord_fixed(ratio = xrange/yrange) +
+    scale_color_gradientn(colors = rev(choose_colorset("Spectral")),
+                          limits = c(0, 100),
+                          oob = scales::oob_squish)
+```
+
+### SCARlink-computed checkpoints for mTEC
+```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=5}
+k <- 10
+groupDF <- meta %>% dplyr::select(celltype, cellnames) %>%
+  column_to_rownames("cellnames")
+
+trajectory <- c("PSC", "Pregonadotropes", "Gonadotropes")
+traj <- get_trajectory(groupDF, group_by = "celltype", embedding = umap, trajectory = trajectory, preFilterQuantile = 1, postFilterQuantile = 1)
+
+dorcMat_sm_norm <- t(apply(dorcMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
+rnaMat_sm_norm <- t(apply(rnaMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
+idx <- which(rowMeans(dorcMat_sm_norm - rnaMat_sm_norm) > 0)
+
+norm_list <- filter_matrix(dmat = dorcMat_sm[idx,rownames(traj)], rmat = rnaMat_sm[idx,rownames(traj)], scale_max_abs_val = 10, gene_corr_cutoff = 0, scaling = 'minmax', ncore = 12)
+ndmat <- norm_list[["ndmat"]]
+nrmat <- norm_list[["nrmat"]]
+
+
+embedding <- umap
+
+df_time <- calc_neigh(traj, ndmat, nrmat, embedding[rownames(traj),], max_per_cell = k, metric = 'cosine', cutoff = 0.95)
+df_time_corrected <- df_time %>% 
+  dplyr::mutate(diff = new_time - old_time)
+df_time_corrected$y <- df_time_corrected$diff
+df_time_corrected$x <- df_time_corrected$old_time
+
+# spline fitting
+library(splines)
+knots <- 1:50 * 2 -1
+fit <- lm(y ~ ns(x, knots = knots, Boundary.knots = c(0, 100)), data = df_time_corrected)
+predict_y <- function(x_new) {
+  predict(fit, newdata = data.frame(x = x_new))
+}
+
+# calc roots
+roots <- list()
+for (i in 0:99) {
+  f <- function(x) predict_y(x)
+  root <- tryCatch({
+    # if(predict_y(i + 1) - predict_y(i) < 1){return(NA)}
+    uniroot(f, interval = c(i, i + 1))$root
+  },
+  error = function(e) NA 
+  )
+  roots[[i + 1]] <- root
+}
+valid_roots <- unlist(roots[!is.na(roots)])
+spline_deriv <- function(x) {
+  h <- 1e-5
+  (predict(fit, newdata = data.frame(x = x + h)) - 
+      predict(fit, newdata = data.frame(x = x - h))) / (2 * h)
+}
+
+derivatives_at_roots <- sapply(valid_roots, spline_deriv)
+valid_roots <- valid_roots[derivatives_at_roots > 0]
+
+find_extrema <- function(a, b, n = 100) {
+  x_grid <- seq(a, b, length.out = n)  
+  deriv_values <- sapply(x_grid, spline_deriv)
+  extrema <- c()
+  for (i in 2:(n - 1)) {
+    if (deriv_values[i] * deriv_values[i + 1] < 0) { 
+      root <- uniroot(
+        spline_deriv,
+        interval = c(x_grid[i], x_grid[i + 1]),
+        tol = 1e-6
+      )$root
+      extrema <- c(extrema, root)
+    }
+  }
+  return(extrema)
+}
+
+extrema_x <- find_extrema(0, 100)
+extreme_filter <- sapply(valid_roots, function(x){
+  x_start <- tail(extrema_x[which(extrema_x < x)], 1)
+  x_end <- head(extrema_x[which(extrema_x > x)], 1)
+  predict_y(x_end) - predict_y(x_start) > 2
+})
+valid_roots <- valid_roots[extreme_filter]
+print(valid_roots)
+
+df_time_corrected$tech = "SCARlink"
+df_time_corrected$diff_pred <- predict_y(df_time_corrected$old_time)
+
+
+ggplot(df_time_corrected, aes(x = old_time, color = tech)) +
+  geom_line(aes(y = diff_pred), size = 1) +
+  theme_bw() +
+  geom_hline(yintercept = 0, linetype = 2) +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(size = 8, color = "black"),
+        axis.text.y = element_text(size = 8, color = "black"),
+        axis.title.x = element_text(size = 13),
+        axis.title.y = element_text(size = 13)) +
+  scale_color_manual(values = color_tech) +
+  geom_vline(xintercept = valid_roots, linetype = 2, color = "#4d004b") +
+  xlim(0, 100) +
+  coord_fixed(100 / (max(df_time_corrected$diff_pred) - min(df_time_corrected$diff_pred))) +
+  ggtitle(paste0("B-spline, k = ", k))
+
+
+```
+
+### This code block is a demo that generates input for SCARlink from seurat and ArchR object.
+```{r eval=FALSE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE}
+seu <- readRDS(paste0(mTEC_root, "RNA/mm_mTEC_wo_mimetic.rds"))
+proj <- loadArchRProject(paste0(mTEC_root, "ATAC/mm_mTEC_wo_mimetic"))
+
+seu <- FindVariableFeatures(seu, nfeatures = 3000)
+saveRDS(seu, file = paste0(mTEC_root, "RNA/mm_mTEC_wo_mimetic_scarlink.rds"))
+
+proj <- addTileMatrix(proj, binarize = FALSE, force = TRUE)
+
+proj <- addIterativeLSI(
+  ArchRProj = proj, 
+  clusterParams = list(
+    resolution = 0.2, 
+    sampleCells = 10000,
+    n.start = 10
+  ),
+  saveIterations = FALSE,
+  useMatrix = "TileMatrix", 
+  depthCol = "nFrags",
+  name = "LSI_ATAC",
+  force = TRUE
+)
+
+proj <- addIterativeLSI(
+  ArchRProj = proj, 
+  clusterParams = list(
+    resolution = 0.2, 
+    sampleCells = 10000,
+    n.start = 10
+  ),
+  saveIterations = FALSE,
+  useMatrix = "GeneExpressionMatrix", 
+  depthCol = "Gex_nUMI",
+  varFeatures = 2500,
+  firstSelection = "variable",
+  binarize = FALSE,
+  name = "LSI_RNA",
+  force = TRUE
+)
+
+# combine ATAC and RNA LSI dims
+proj <- addCombinedDims(proj, reducedDims = c("LSI_ATAC", "LSI_RNA"), name = "LSI_Combined")
+proj <- addCombinedDims(proj, reducedDims = c("LSI_ATAC", "LSI_RNA"), name = "IterativeLSI")
+saveArchRProject(proj, outputDirectory = paste0(mTEC_root, "ATAC/mm_mTEC_wo_mimetic_scarlink"))
+
+# scarlink_processing --scrna /home/zeemeeuw/data/mTEC/RNA/mm_mTEC_wo_mimetic_scarlink.rds --scatac /home/zeemeeuw/data/mTEC/ATAC/mm_mTEC_wo_mimetic_scarlink -o /home/zeemeeuw/data/mTEC/scarlink
+# scarlink -o /home/zeemeeuw/data/mTEC/scarlink -g mm10
+
+# In jupyter notebook,
+# import scarlink.src.chromatin_potential as scp
+# dirname = "/home/zeemeeuw/data/mTEC/scarlink/"
+# chrom_p = scp.create_object(dirname, celltype_col = None)
+# This generates all inputs that you need to run chromatin checkpoint analysis
+```
+
+```{r eval=TRUE, include=TRUE}
+sessionInfo()
+```
+
+
+
