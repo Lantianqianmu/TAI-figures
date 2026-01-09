@@ -1,0 +1,269 @@
+---
+title: "Figure S17"
+author: "Runze Xie @ institute of biophysics, 01/04/2026"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = "/home/zeemeeuw/data/TAI-Rmd/V1_data")
+```
+
+### Loading packages
+```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE}
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(readr)
+library(ggplot2)
+library(patchwork)
+library(ggrepel)
+library(readxl)
+library(openxlsx)
+library(ggbreak)
+library(ggbeeswarm)
+source("/home/zeemeeuw/data/TAI-Rmd/V1_code/utils.R")
+setwd('/home/zeemeeuw/data/TAI-Rmd/V1_data')
+```
+
+### Set parameters for plotting
+```{r include = TRUE}
+color_phase <- c("Ctrl" = "grey", 
+                 "Priming" = "#A6CDE2", 
+                 "Primary" = "#F47E1F" , 
+                 "Recall" = "#74C476")
+
+
+level_TCR <- c("jurkat", "220", "221", "231", "232", "233", "234", "235", 
+               "236", "237", "238", "271", "272", "273", "274", "275", "213", 
+               "214", "215", "216", "217", "218", "219", "222", "228", "229", 
+               "230", "239", "240", "241", "242", "243", "244", "245", "246", 
+               "247", "248", "249", "250", "251", "252", "253", "254", "255", 
+               "256", "257", "258", "259", "260", "223", "224", "225", "226", 
+               "227", "261", "262", "263", "264", "265", "266", "267", "268", 
+               "269", "270")
+
+
+color_TCR <- c("grey70",
+               colorRampPalette(c("#B6BFEB", "#8694D8", "#5668C3", "#3648A2"))(15),
+               colorRampPalette(c("#F7B4B4", "#ED8080", "#DF4A4A", "#BE2A2A"))(33),
+               colorRampPalette(c("#B6EBBA", "#86D88B", "#56C35D", "#36A23D"))(15))
+names(color_TCR) <- level_TCR
+
+
+```
+
+### Clonal expansion of selected TCRs
+```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=17}
+
+meta <- read.xlsx('/home/zeemeeuw/data/mmJoint/cleanTCR/Lm-TCR4.57-clonotypes-paired in rna.xlsx') %>% 
+  dplyr::mutate(tissue = str_extract(Tissue_time, "(.*)-", group = 1)) %>% 
+  group_by(CDRa_CDRb, timepoint, tissue, barcode) %>% 
+  distinct(CDRa_CDRb, timepoint, tissue, barcode, .keep_all = TRUE) %>% 
+  ungroup() %>% 
+  dplyr::filter(!str_detect(CDRa_CDRb, "_")) %>% 
+  dplyr::filter(tissue == "Spleen") %>%
+  dplyr::filter(timepoint != "WT") %>%
+  dplyr::filter(timepoint %in% c("d3", "d8", "R5")) %>%
+  dplyr::mutate(group = case_match(timepoint, c("d3") ~ "Priming", c("R5", "Y5") ~ "Recall", .default = "Primary")) %>% 
+  group_by(CDRa_CDRb, group) %>% 
+  dplyr::mutate(n = n()) %>% 
+  group_by(group) %>% 
+  dplyr::mutate(total_n = n()) %>% 
+  ungroup()
+
+tcr <- read_tsv('TCR_cloned_CDR.tsv')
+
+plist <- list()
+for(phase in c("Priming", "Primary", "Recall")){
+  meta_phase <- meta %>% dplyr::filter(group == phase) %>% 
+    dplyr::select(CDRa_CDRb, group)
+  tcr_phase <- tcr %>% dplyr::filter(group == phase)
+  
+  data <- meta_phase %>% 
+    left_join(tcr_phase, by = join_by(CDRa_CDRb, group)) %>% 
+    group_by(CDRa_CDRb) %>% 
+    dplyr::mutate(n = n()) %>% 
+    arrange(desc(n), desc(id)) %>% 
+    distinct() %>% 
+    ungroup() %>% 
+    dplyr::mutate(x = row_number()) %>% 
+    dplyr::mutate(selected = if_else(is.na(id), "N", "Y")) %>% 
+    arrange(selected)
+  
+ 
+  p1 <- ggplot(data, aes(x = x, y = n, fill = selected, color = selected, shape = selected, size = n)) +
+      # scale_x_continuous() +
+      scale_x_log10(limits = c(1, 500)) +
+      scale_y_log10() +
+      geom_point() +
+      scale_shape_manual(values = c(16, 21)) +
+      scale_size_continuous(range = c(2, 5)) +
+      theme_bw() +
+      theme(axis.text.x = element_text(size = 8, color = "black"),
+            axis.text.y = element_text(size = 8, color = "black"),
+            axis.title.x = element_text(size = 13),
+            axis.title.y = element_text(size = 13)) +
+      scale_fill_manual(values = c("Y" = "#FF851D", "N" = "grey85")) +
+      scale_color_manual(values = c("Y" = "black", "N" = "grey85"))  +
+      ggtitle(phase)
+  
+  plist <- c(plist, list(p1))
+}
+wrap_plots(plist, nrow = 1)
+  
+```
+
+### Tet MFI and %tet+ of selected TCRs
+```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=17}
+
+data <- readxl::read_excel("20251111-TCR213-275-Tet binding MFI-Prop-mean_3.xlsx") %>% 
+  rename_with(~c("phase", "TCR_rep", "mean_MFI", "mean_prop")) %>% 
+  dplyr::mutate(TCR = str_extract(TCR_rep, "(.*)-(.*)", group = 1),
+                rep = str_extract(TCR_rep, "(.*)-(.*)", group = 2)) %>% 
+  dplyr::mutate_at(vars(phase), ~factor(.x, levels = c("Ctrl", "Priming", "Primary", "Recall"))) %>% 
+  dplyr::mutate(log_MFI = log10(mean_MFI)) %>% 
+  dplyr::mutate(x = case_match(phase, "Ctrl" ~ 1, "Priming" ~ 2, "Primary" ~ 3, "Recall" ~ 4)) %>% 
+  arrange(phase, TCR, rep) %>% 
+  dplyr::mutate(x = consecutive_id(TCR)) %>% 
+  dplyr::mutate_at(vars(TCR), ~factor(.x, levels = level_TCR))
+
+
+data_summary <- data %>% group_by(TCR, x) %>% 
+  dplyr::summarise(group_MFI = mean(mean_MFI), 
+                   group_prop = mean(mean_prop),
+                   sem_MFI = plotrix::std.error(mean_MFI),
+                   sem_prop = plotrix::std.error(mean_prop))
+
+barwidth <- 0.7
+# MFI
+ggplot() +
+  geom_errorbar(data = data_summary, aes(x = x, ymax = group_MFI + sem_MFI, ymin = group_MFI - sem_MFI), width = barwidth/2, show.legend = FALSE) +
+  geom_bar(data = data_summary, aes(x = x, y = group_MFI, fill = TCR), stat = 'identity', width = barwidth, alpha = 1, show.legend = FALSE) +
+  geom_jitter(data = data, aes(x = x, y = mean_MFI, fill = TCR), shape = 21, size = 1, width = barwidth/4, show.legend = FALSE) +
+  theme_classic() +
+  scale_fill_manual(values = color_TCR) +
+  xlab(NULL) +
+  ylab("Tet MFI") +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(size = 8, color = "black", hjust = 1, angle = 45),
+        axis.text.y = element_text(size = 8, color = "black"),
+        axis.title.x = element_text(size = 13),
+        axis.title.y = element_text(size = 13)) +
+  scale_x_continuous(breaks = 1:nrow(data_summary), labels = levels(data$TCR), expand = expansion(mult = c(0.01, 0.01))) +
+  scale_y_log10(expand = expansion(mult = c(0, 0.05))) +
+  geom_hline(yintercept = data_summary %>% dplyr::filter(TCR == "jurkat") %>% pull(group_MFI), color = "black", linetype = 2) +
+  scale_y_break(c(20,80), space = 0.1, scales = 8)
+
+
+
+ggplot() +
+  geom_errorbar(data = data_summary, aes(x = x, ymax = group_prop + sem_prop, ymin = group_prop - sem_prop), width = barwidth/2, show.legend = FALSE) +
+  geom_bar(data = data_summary, aes(x = x, y = group_prop, fill = TCR), stat = 'identity', width = barwidth, alpha = 1, show.legend = FALSE) +
+  geom_jitter(data = data, aes(x = x, y = mean_prop, fill = TCR), shape = 21, size = 1, width = barwidth/4, show.legend = FALSE) +
+  theme_classic() +
+  scale_fill_manual(values = color_TCR) +
+  xlab(NULL) +
+  ylab("% Tet") +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(size = 8, color = "black", hjust = 1, angle = 45),
+        axis.text.y = element_text(size = 8, color = "black"),
+        axis.title.x = element_text(size = 13),
+        axis.title.y = element_text(size = 13)) +
+  scale_x_continuous(breaks = 1:nrow(data_summary), labels = levels(data$TCR), expand = expansion(mult = c(0.01, 0.01))) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.05))) 
+  
+```
+
+### T test for Tet MFI and %tet+ of selected TCRs in different phase
+```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=5}
+
+data <- readxl::read_excel("/home/zeemeeuw/data/mmJoint/TCR/ymdata/20251111-TCR213-275-Tet binding MFI-Prop-mean.xlsx") %>% 
+  rename_with(~c("phase", "TCR_rep", "mean_MFI", "mean_prop")) %>% 
+  dplyr::mutate_at(vars(phase), ~factor(.x, levels = c("Ctrl", "Priming", "Primary", "Recall"))) %>% 
+  dplyr::mutate(log_MFI = log10(mean_MFI)) %>% 
+  dplyr::mutate(x = case_match(phase, "Ctrl" ~ 1, "Priming" ~ 2, "Primary" ~ 3, "Recall" ~ 4))
+
+comb <- t(combn(levels(data$phase), 2)) %>% as_tibble()
+df_sig <- lapply(1:nrow(comb), function(i) {
+  guse <- comb[i,]
+  t <- wilcox.test(x = data %>% dplyr::filter(phase == guse$V1) %>% pull(log_MFI),
+              y = data %>% dplyr::filter(phase == guse$V2) %>% pull(log_MFI), paired = FALSE, var.equal = FALSE)
+  c <- tibble(p = t$p.value, 
+              xmin = data %>% dplyr::filter(phase == guse$V1) %>% pull(x) %>% unique(),
+              xmax = data %>% dplyr::filter(phase == guse$V2) %>% pull(x) %>% unique(),
+              x_min_group = data %>% dplyr::filter(phase == guse$V1) %>% pull(phase) %>% unique(),
+              x_max_group = data %>% dplyr::filter(phase == guse$V2) %>% pull(phase) %>% unique(),
+              y = max(data$log_MFI)/100*(70 + i*3))
+}) %>% Reduce("rbind", .)
+
+
+calc_boxplot_stats <- function(x) {
+  qs <- quantile(x, probs = c(0.25, 0.5, 0.75), na.rm = TRUE)
+  iqr <- qs[3] - qs[1]
+  lower_whisker <- max(min(x, na.rm = TRUE), qs[1] - 1.5 * iqr)
+  upper_whisker <- min(max(x, na.rm = TRUE), qs[3] + 1.5 * iqr)
+  
+  stats <- log10(c(lower_whisker, qs[1], qs[2], qs[3], upper_whisker))
+  names(stats) <- c("ymin", "lower", "middle", "upper", "ymax")
+  return(stats)
+}
+
+ggplot(data, aes(x = phase, y = mean_MFI)) + 
+  stat_summary(
+    fun.data = function(x) calc_boxplot_stats(x),
+    geom = "boxplot"
+  ) +
+  geom_jitter(aes(fill = phase, y = log_MFI), shape = 21, size = 2, alpha = 1, width = 0.2) +
+  scale_fill_manual(values = color_phase) +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(size = 10, color = "black"),
+        axis.text.y = element_text(size = 10, color = "black"),
+        axis.title.x = element_text(size = 13),
+        axis.title.y = element_text(size = 13)) +
+  geom_segment(data = df_sig, aes(x = xmin, xend = xmax, y = y, yend = y)) +
+  geom_text(data = df_sig, aes(x = (xmin + xmax) / 2, y = y, label = p), size = 3, vjust = 0) +
+  coord_cartesian(ylim = c(1.8, 4)) +
+  guides(fill = guide_legend(override.aes = list(size = 5)))
+
+
+comb <- t(combn(levels(data$phase), 2)) %>% as_tibble()
+df_sig <- lapply(1:nrow(comb), function(i) {
+  guse <- comb[i,]
+  t <- wilcox.test(x = data %>% dplyr::filter(phase == guse$V1) %>% pull(mean_prop),
+              y = data %>% dplyr::filter(phase == guse$V2) %>% pull(mean_prop), paired = FALSE, var.equal = FALSE)
+  c <- tibble(p = t$p.value, 
+              xmin = data %>% dplyr::filter(phase == guse$V1) %>% pull(x) %>% unique(),
+              xmax = data %>% dplyr::filter(phase == guse$V2) %>% pull(x) %>% unique(),
+              x_min_group = data %>% dplyr::filter(phase == guse$V1) %>% pull(phase) %>% unique(),
+              x_max_group = data %>% dplyr::filter(phase == guse$V2) %>% pull(phase) %>% unique(),
+              y = max(data$mean_prop)/100*(70 + i*3))
+}) %>% Reduce("rbind", .)
+
+
+ggplot(data, aes(x = phase, y = mean_prop)) + 
+  geom_boxplot() +
+  geom_beeswarm(aes(fill = phase), shape = 21,  cex = 2, size = 2, alpha = 1) +
+  scale_fill_manual(values = color_phase) +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(size = 10, color = "black"),
+        axis.text.y = element_text(size = 10, color = "black"),
+        axis.title.x = element_text(size = 13),
+        axis.title.y = element_text(size = 13)) +
+  scale_y_continuous(breaks = c(25, 50, 100), limits = c(0, 100)) +
+  geom_segment(data = df_sig, aes(x = xmin, xend = xmax, y = y, yend = y)) +
+  geom_text(data = df_sig, aes(x = (xmin + xmax) / 2, y = y, label = p), size = 3, vjust = 0) +
+  guides(fill = guide_legend(override.aes = list(size = 5))) 
+  
+```
+
+
+
+
+```{r eval=TRUE, include=TRUE}
+sessionInfo()
+```
+
+
+
