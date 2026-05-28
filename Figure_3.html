@@ -9,7 +9,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
-<meta name="author" content="Runze Xie @ institute of biophysics, 11/07/2025" />
+<meta name="author" content="Runze Xie @ institute of biophysics, 04/24/2026" />
 
 
 <title>Figure 3</title>
@@ -356,7 +356,7 @@ display: none;
 
 
 <h1 class="title toc-ignore">Figure 3</h1>
-<h4 class="author">Runze Xie @ institute of biophysics, 11/07/2025</h4>
+<h4 class="author">Runze Xie @ institute of biophysics, 04/24/2026</h4>
 
 </div>
 
@@ -379,8 +379,8 @@ library(ggraph)
 library(igraph)
 library(ggrepel)
 library(BSgenome.Mmusculus.UCSC.mm10)
-source(&quot;/home/zeemeeuw/data/TAI-Rmd/V1_code/utils.R&quot;)
-setwd(&#39;/home/zeemeeuw/data/TAI-Rmd/V1_data&#39;)</code></pre>
+source(&quot;/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_code/utils.R&quot;)
+setwd(&#39;/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data&#39;)</code></pre>
 </div>
 <div id="read-seurat-and-archr-object-for-plotting." class="section level3">
 <h3>Read Seurat and ArchR object for plotting.</h3>
@@ -388,10 +388,8 @@ setwd(&#39;/home/zeemeeuw/data/TAI-Rmd/V1_data&#39;)</code></pre>
 <h4>Critical: change the directory to your working dir accordingly!</h4>
 <p>The DORC matrix was called with FigR. Here we provide called peak-GEX
 correlation dataframe and MAGIC-smoothed DORC/RNA matrix.</p>
-<pre class="r"><code>RDSdir &lt;- &quot;/home/zeemeeuw/data/mmJoint/RNA/data/lm_ym/&quot; # output RDS file dir
-ATACdir &lt;- &quot;/home/zeemeeuw/data/mmJoint/ATAC/overlapped_harmony/&quot; # ATAC root dir
-
-# read Seurat and ArchR object
+<pre class="r"><code>RDSdir &lt;- &quot;/media/zeemeeuw/TAI-seq/mmTAI/RNA/&quot; # output RDS file dir
+ATACdir &lt;- &quot;/media/zeemeeuw/TAI-seq/mmTAI/ATAC/overlapped_harmony/&quot; # ATAC root dir
 seu &lt;- readRDS(paste0(RDSdir, &quot;lm_merged_overlapped_harmony.rds&quot;))
 proj &lt;- loadArchRProject(ATACdir)</code></pre>
 <pre><code>## Successfully loaded ArchRProject!</code></pre>
@@ -577,7 +575,7 @@ if(FALSE){
   res_dorc_used &lt;- t(res_dorc[,rownames(res_positive)])
   res_rna_used &lt;- t(res_rna[,rownames(res_positive)])
 
-  
+  cp_list &lt;- list()
   cp_list[[&quot;cp1_predi&quot;]] &lt;- list(dorc = res_dorc_used[genes_predi[[1]],], rna = res_rna_used[genes_predi[[1]],], residual = res_positive[genes_predi[[1]],])
   cp_list[[&quot;cp1_maint&quot;]] &lt;- list(dorc = res_dorc_used[genes_maint[[1]],], rna = res_rna_used[genes_maint[[1]],], residual = res_positive[genes_maint[[1]],])
   
@@ -835,79 +833,11 @@ wrap_plots(plot_list, ncol = 2)</code></pre>
 </div>
 <div id="tf-regulatory-networks-were-called-with-figr" class="section level3">
 <h3>TF regulatory networks were called with FigR</h3>
-<pre class="r"><code>if(FALSE){
-  pwm &lt;- readRDS(&quot;/home/zeemeeuw/YangLab/JoINT-seq/FigR/FigR-master/data/cisBP_mouse_pfms_2021.rds&quot;)
-
-  cell_ln &lt;- proj$cellNames[!is.na(proj$Ln.trajectory)]
-  cell_sp &lt;- proj$cellNames[!is.na(proj$Spleen.trajectory)]
-  cell_lv &lt;- proj$cellNames[!is.na(proj$Liver.trajectory)]
-  cell_bl &lt;- proj$cellNames[!is.na(proj$Blood.trajectory)]
-  cell_ln_re &lt;- proj$cellNames[!is.na(proj$Ln.trajectory_re) &amp; !str_starts(proj$cell_module, &quot;Memory&quot;)]
-  cell_sp_re &lt;- proj$cellNames[!is.na(proj$Spleen.trajectory_re) &amp; !str_starts(proj$cell_module, &quot;Memory&quot;)]
-  cell_lv_re &lt;- proj$cellNames[!is.na(proj$Liver.trajectory_re) &amp; !str_starts(proj$cell_module, &quot;Memory&quot;)]
-  cell_bl_re &lt;- proj$cellNames[!is.na(proj$Blood.trajectory_re) &amp; !str_starts(proj$cell_module, &quot;Memory&quot;)]
-  
-  
-  grn_names &lt;- c(&quot;grn_ln&quot;, &quot;grn_sp&quot;, &quot;grn_lv&quot;, &quot;grn_bl&quot;, &quot;grn_ln_re&quot;, &quot;grn_sp_re&quot;, &quot;grn_lv_re&quot;, &quot;grn_bl_re&quot;)
-  cell_names &lt;- list(cell_ln, cell_sp, cell_lv, cell_bl, cell_ln_re, cell_sp_re, cell_lv_re, cell_bl_re)
-  grn_list &lt;- list()
-  for (i in seq_along(grn_names)) {
-    grn_list[[grn_names[i]]] &lt;- analyze_FigR_GRN(ATAC.se = pkm[,cell_names[[i]]], dorcK = 30, dorcTab = gpcorr.use, n_bg = 50, genome = &quot;mm10&quot;, pwm = pwm,
-                                                 dorcMat = dorcMat_sm_norm[,cell_names[[i]]], rnaMat = rnaMat_sm_norm[,cell_names[[i]]], dorcGenes = dorcGenes, nCores = 4)
-    gc()
-    
-  }
-  save(grn_list, file = paste0(RDSdir, &quot;lm_merged_overlapped_harmony_GRN_list_by_tissue.RData&quot;))
-}</code></pre>
 </div>
 <div id="tf-regulators-of-each-chromatin-checkpoint" class="section level3">
 <h3>TF regulators of each chromatin checkpoint</h3>
-<pre class="r"><code>load(paste0(RDSdir, &quot;Spleen_DORC_RNA_residual_checkpoint.RData&quot;))
-load(paste0(RDSdir, &quot;lm_merged_overlapped_harmony_GRN_list_by_tissue.RData&quot;))
-grn &lt;- grn_list$grn_sp
+<pre class="r"><code>data &lt;- read_tsv(&#39;source_fig_3f.tsv&#39;)
 
-# lollipop
-groups &lt;- rep(c(&quot;predisposition&quot;, &quot;maintenance&quot;), 4)
-checkpoints &lt;- c(1, 1, 2, 2, 3, 3, 4, 4)
-data &lt;- lapply(seq_along(1:8), function(i){
-  group &lt;- groups[i]
-  checkpoint &lt;- checkpoints[i]
-  genes &lt;- rownames(cp_list[[i]]$residual)
-  grn_used &lt;- grn %&gt;% dplyr::filter(DORC %in% genes) %&gt;% 
-    dplyr::filter(abs(Score) &gt;= 0.8) %&gt;% 
-    group_by(Motif) %&gt;% 
-    dplyr::summarise(corr = mean(Corr), n = n()) %&gt;% 
-    dplyr::arrange(desc(n), .by_group = TRUE) %&gt;% 
-    dplyr::mutate(group = group, checkpoint = checkpoint)
-}) %&gt;% Reduce(&quot;rbind&quot;, .) %&gt;% 
-  dplyr::mutate_at(vars(checkpoint), ~as.integer(.))
-cp1_pre &lt;- c(&quot;Bach2&quot;, &quot;Nfe2l2&quot;, &quot;Atf6&quot;, &quot;Nfkb2&quot;, &quot;Tbx21&quot;)
-cp1_mai &lt;- c(&quot;Zeb1&quot;, &quot;Tcf3&quot;, &quot;Zfp281&quot;, &quot;Bhlhe40&quot;, &quot;Tcf7&quot;)
-cp2_pre &lt;-c(&quot;Bach2&quot;, &quot;Tbx21&quot;, &quot;Nfe2l2&quot;, &quot;Arid5b&quot;, &quot;Klf12&quot;)
-cp2_mai &lt;-c(&quot;Tcf3&quot;, &quot;Zeb2&quot;, &quot;Zeb1&quot;, &quot;Tcf7&quot;, &quot;Nfkb2&quot;)
-cp3_pre &lt;-c(&quot;E2f7&quot;, &quot;Foxo3&quot;, &quot;Foxp1&quot;, &quot;Stat3&quot;, &quot;Tcf7&quot;)
-cp3_mai &lt;-c(&quot;Bach2&quot;, &quot;Nfe2l2&quot;, &quot;Arid5b&quot;, &quot;Atf6&quot;, &quot;Tet1&quot;)
-cp4_pre &lt;-c(&quot;Tcf3&quot;, &quot;Zeb1&quot;, &quot;Nfkb2&quot;, &quot;Zeb2&quot;, &quot;Bach2&quot;)
-cp4_mai &lt;-c(&quot;Tbx21&quot;, &quot;Bach2&quot;, &quot;Klf12&quot;, &quot;Rara&quot;, &quot;Trps1&quot;)
-
-pdata &lt;- dplyr::bind_rows(dplyr::filter(data, ((group == &quot;predisposition&quot;) &amp; (checkpoint == 1) &amp; (Motif %in% cp1_pre))),
-                          dplyr::filter(data, ((group == &quot;maintenance&quot;) &amp; (checkpoint == 1) &amp; (Motif %in% cp1_mai))),
-                          dplyr::filter(data, ((group == &quot;predisposition&quot;) &amp; (checkpoint == 2) &amp; (Motif %in% cp2_pre))),
-                          dplyr::filter(data, ((group == &quot;maintenance&quot;) &amp; (checkpoint == 2) &amp; (Motif %in% cp2_mai))),
-                          dplyr::filter(data, ((group == &quot;predisposition&quot;) &amp; (checkpoint == 3) &amp; (Motif %in% cp3_pre))),
-                          dplyr::filter(data, ((group == &quot;maintenance&quot;) &amp; (checkpoint == 3) &amp; (Motif %in% cp3_mai))),
-                          dplyr::filter(data, ((group == &quot;predisposition&quot;) &amp; (checkpoint == 4) &amp; (Motif %in% cp4_pre))),
-                          dplyr::filter(data, ((group == &quot;maintenance&quot;) &amp; (checkpoint == 4) &amp; (Motif %in% cp4_mai)))) %&gt;% 
-  dplyr::group_by(group, checkpoint) %&gt;% 
-  dplyr::arrange(dplyr::desc(n), .by_group = TRUE) %&gt;% 
-  group_by(group) %&gt;% 
-  dplyr::mutate(x = row_number(),
-                y = if_else(group == &quot;predisposition&quot;, n, -n)) %&gt;% 
-  dplyr::mutate(ytext = if_else(group == &quot;predisposition&quot;, n+10, -n-10)) %&gt;% 
-  dplyr::mutate(color = case_when(y &gt; 30 ~ 30, y &lt; -30 ~ -30, .default = y))
-motif_selected &lt;- pdata %&gt;% pull(&quot;Motif&quot;)
-data &lt;- pdata
-write_tsv(data, &quot;source_fig_3G.tsv&quot;, na = &quot;&quot;)
 ggplot(data, aes(x = x, y = y, color = corr)) +
   theme_bw() +
   ylim(-80, 80) +
@@ -971,37 +901,9 @@ wrap_plots(plot_list, ncol = 2)  </code></pre>
 </div>
 <div id="tf-regulatory-networks" class="section level3">
 <h3>TF regulatory networks</h3>
-<pre class="r"><code>load(paste0(RDSdir, &quot;Spleen_DORC_RNA_residual_checkpoint.RData&quot;))
-load(paste0(RDSdir, &quot;lm_merged_overlapped_harmony_GRN_list_by_tissue.RData&quot;))
-grn &lt;- grn_list$grn_sp
+<pre class="r"><code>conn &lt;- read_tsv(&#39;source_fig_3g_conn.tsv&#39;)
+vertices &lt;- read_tsv(&#39;source_fig_3g_vertices.tsv&#39;)
 
-conn &lt;- grn %&gt;% 
-  dplyr::filter(Motif %in% motif_selected) %&gt;% 
-  dplyr::mutate(Motif = paste0(&quot;Motif:&quot;, Motif)) %&gt;% 
-  dplyr::filter(abs(Score) &gt;= 0.8) %&gt;% 
-  dplyr::mutate(group = if_else(Corr &gt; 0, &quot;Positive&quot;, &quot;Negative&quot;)) %&gt;% 
-  dplyr::select(DORC, Motif, group)
-
-vertices_DORC &lt;- conn %&gt;%
-  ungroup() %&gt;% 
-  dplyr::select(DORC) %&gt;% 
-  group_by(DORC) %&gt;% 
-  dplyr::summarise(n = n()) %&gt;% 
-  rename_with(~c(&quot;name&quot;, &quot;n&quot;)) %&gt;% 
-  dplyr::mutate(group = &quot;DORC&quot;)
-
-vertices_TF &lt;- conn %&gt;%
-  ungroup() %&gt;% 
-  dplyr::select(Motif) %&gt;% 
-  group_by(Motif) %&gt;% 
-  dplyr::summarise(n = n()) %&gt;% 
-  rename_with(~c(&quot;name&quot;, &quot;n&quot;)) %&gt;% 
-  dplyr::mutate(group = &quot;Motif&quot;)
-vertices &lt;- bind_rows(vertices_DORC, vertices_TF)
-
-conn &lt;- conn %&gt;% dplyr::select(DORC, Motif, group) %&gt;% 
-  rename_with(~c(&quot;from&quot;, &quot;to&quot;, &quot;group&quot;)) %&gt;% 
-  dplyr::mutate(value = 1)
 gr &lt;- graph_from_data_frame(conn, vertices = vertices)
 
 set.seed(61)
@@ -1057,7 +959,7 @@ ggraph(gr, layout = &quot;igraph&quot;, algorithm = &#39;fr&#39;) +
 ## [29] S4Vectors_0.36.2                   BiocGenerics_0.44.0               
 ## [31] matrixStats_0.62.0                 data.table_1.15.4                 
 ## [33] stringr_1.5.1                      plyr_1.8.9                        
-## [35] magrittr_2.0.3                     gtable_0.3.5                      
+## [35] magrittr_2.0.3                     gtable_0.3.6                      
 ## [37] gtools_3.9.3                       gridExtra_2.3                     
 ## [39] ArchR_1.0.2                        readr_2.1.5                       
 ## [41] scattermore_1.2                    tibble_3.2.1                      
@@ -1065,81 +967,81 @@ ggraph(gr, layout = &quot;igraph&quot;, algorithm = &#39;fr&#39;) +
 ## [45] ggplot2_3.5.2                      dbplyr_2.4.0                      
 ## 
 ## loaded via a namespace (and not attached):
-##   [1] utf8_1.2.4                  R.utils_2.12.0             
-##   [3] spatstat.explore_3.2-1      reticulate_1.25            
-##   [5] tidyselect_1.2.1            AnnotationDbi_1.60.2       
-##   [7] poweRlaw_0.70.6             RSQLite_2.3.7              
-##   [9] htmlwidgets_1.5.4           BiocParallel_1.32.6        
-##  [11] Rtsne_0.16                  munsell_0.5.1              
-##  [13] codetools_0.2-18            ica_1.0-3                  
-##  [15] DT_0.28                     future_1.26.1              
-##  [17] miniUI_0.1.1.1              withr_3.0.0                
-##  [19] spatstat.random_3.1-5       colorspace_2.1-0           
-##  [21] progressr_0.10.1            highr_0.9                  
-##  [23] knitr_1.39                  rstudioapi_0.17.1          
-##  [25] ROCR_1.0-11                 tensor_1.5                 
-##  [27] listenv_0.8.0               labeling_0.4.3             
-##  [29] GenomeInfoDbData_1.2.9      polyclip_1.10-6            
-##  [31] pheatmap_1.0.12             bit64_4.0.5                
-##  [33] farver_2.1.2                parallelly_1.32.0          
-##  [35] vctrs_0.6.5                 generics_0.1.3             
-##  [37] xfun_0.40                   R6_2.5.1                   
-##  [39] doParallel_1.0.17           clue_0.3-64                
-##  [41] graphlayouts_0.8.2          bitops_1.0-7               
-##  [43] rhdf5filters_1.8.0          spatstat.utils_3.1-1       
-##  [45] cachem_1.1.0                DelayedArray_0.22.0        
-##  [47] vroom_1.6.5                 promises_1.2.0.1           
-##  [49] BiocIO_1.6.0                scales_1.3.0               
-##  [51] Cairo_1.6-2                 globals_0.15.1             
-##  [53] goftest_1.2-3               tidygraph_1.3.1            
-##  [55] seqLogo_1.62.0              rlang_1.1.4                
-##  [57] GlobalOptions_0.1.2         lazyeval_0.2.2             
-##  [59] spatstat.geom_3.2-4         yaml_2.3.5                 
-##  [61] reshape2_1.4.4              abind_1.4-5                
-##  [63] httpuv_1.6.5                tools_4.2.1                
-##  [65] nabor_0.5.0                 ellipsis_0.3.2             
-##  [67] jquerylib_0.1.4             RColorBrewer_1.1-3         
-##  [69] ggridges_0.5.3              zlibbioc_1.44.0            
-##  [71] purrr_1.0.2                 RCurl_1.98-1.14            
-##  [73] deldir_1.0-6                pbapply_1.5-0              
-##  [75] GetoptLong_1.0.5            cowplot_1.1.3              
-##  [77] zoo_1.8-10                  cluster_2.1.4              
-##  [79] circlize_0.4.15             lmtest_0.9-40              
-##  [81] RANN_2.6.1                  fitdistrplus_1.1-8         
-##  [83] hms_1.1.3                   mime_0.12                  
-##  [85] evaluate_0.16               xtable_1.8-4               
-##  [87] XML_3.99-0.10               shape_1.4.6                
-##  [89] compiler_4.2.1              KernSmooth_2.23-20         
-##  [91] crayon_1.5.3                R.oo_1.25.0                
-##  [93] htmltools_0.5.2             later_1.3.0                
-##  [95] tzdb_0.3.0                  TFBSTools_1.34.0           
-##  [97] tidyr_1.3.1                 DBI_1.2.3                  
-##  [99] tweenr_2.0.3                cli_3.6.3                  
-## [101] R.methodsS3_1.8.2           pkgconfig_2.0.3            
-## [103] TFMPvalue_0.0.9             GenomicAlignments_1.32.1   
-## [105] sp_1.5-0                    plotly_4.10.0              
-## [107] spatstat.sparse_3.0-2       foreach_1.5.2              
-## [109] annotate_1.74.0             DirichletMultinomial_1.38.0
-## [111] bslib_0.4.0                 digest_0.6.36              
-## [113] pracma_2.4.2                sctransform_0.4.1          
-## [115] RcppAnnoy_0.0.19            CNEr_1.32.0                
-## [117] spatstat.data_3.0-1         rmarkdown_2.16             
-## [119] cellranger_1.1.0            leiden_0.4.2               
-## [121] uwot_0.1.14                 restfulr_0.0.15            
-## [123] shiny_1.7.1                 Rsamtools_2.12.0           
-## [125] rjson_0.2.21                lifecycle_1.0.4            
-## [127] nlme_3.1-159                jsonlite_1.8.8             
-## [129] Rhdf5lib_1.18.2             fansi_1.0.6                
-## [131] pillar_1.9.0                lattice_0.20-45            
-## [133] GO.db_3.16.0                KEGGREST_1.38.0            
-## [135] fastmap_1.2.0               httr_1.4.7                 
-## [137] survival_3.4-0              glue_1.7.0                 
-## [139] zip_2.2.1                   png_0.1-8                  
-## [141] iterators_1.0.14            bit_4.0.4                  
-## [143] ggforce_0.4.2               stringi_1.8.4              
-## [145] sass_0.4.2                  blob_1.2.3                 
-## [147] memoise_2.0.1               caTools_1.18.2             
-## [149] irlba_2.3.5                 future.apply_1.9.0</code></pre>
+##   [1] R.methodsS3_1.8.2           tidyr_1.3.1                
+##   [3] nabor_0.5.0                 bit64_4.0.5                
+##   [5] knitr_1.39                  irlba_2.3.5                
+##   [7] DelayedArray_0.22.0         R.utils_2.12.0             
+##   [9] KEGGREST_1.38.0             TFBSTools_1.34.0           
+##  [11] RCurl_1.98-1.14             doParallel_1.0.17          
+##  [13] generics_0.1.3              cowplot_1.1.3              
+##  [15] RSQLite_2.3.7               RANN_2.6.1                 
+##  [17] future_1.26.1               bit_4.0.4                  
+##  [19] tzdb_0.3.0                  spatstat.data_3.0-1        
+##  [21] httpuv_1.6.5                DirichletMultinomial_1.38.0
+##  [23] xfun_0.40                   hms_1.1.3                  
+##  [25] jquerylib_0.1.4             evaluate_0.16              
+##  [27] promises_1.2.0.1            fansi_1.0.6                
+##  [29] restfulr_0.0.15             caTools_1.18.2             
+##  [31] DBI_1.2.3                   htmlwidgets_1.5.4          
+##  [33] spatstat.geom_3.2-4         purrr_1.0.2                
+##  [35] ellipsis_0.3.2              annotate_1.74.0            
+##  [37] deldir_1.0-6                vctrs_0.6.5                
+##  [39] Cairo_1.6-2                 ROCR_1.0-11                
+##  [41] abind_1.4-5                 cachem_1.1.0               
+##  [43] withr_3.0.0                 ggforce_0.4.2              
+##  [45] progressr_0.10.1            vroom_1.6.5                
+##  [47] sctransform_0.4.1           GenomicAlignments_1.32.1   
+##  [49] goftest_1.2-3               cluster_2.1.4              
+##  [51] lazyeval_0.2.2              seqLogo_1.62.0             
+##  [53] crayon_1.5.3                spatstat.explore_3.2-1     
+##  [55] pkgconfig_2.0.3             labeling_0.4.3             
+##  [57] tweenr_2.0.3                nlme_3.1-159               
+##  [59] rlang_1.1.4                 globals_0.15.1             
+##  [61] lifecycle_1.0.4             miniUI_0.1.1.1             
+##  [63] dichromat_2.0-0.1           cellranger_1.1.0           
+##  [65] polyclip_1.10-6             lmtest_0.9-40              
+##  [67] Rhdf5lib_1.18.2             zoo_1.8-15                 
+##  [69] ggridges_0.5.3              GlobalOptions_0.1.2        
+##  [71] pheatmap_1.0.12             png_0.1-8                  
+##  [73] rjson_0.2.21                bitops_1.0-7               
+##  [75] R.oo_1.25.0                 KernSmooth_2.23-20         
+##  [77] rhdf5filters_1.8.0          blob_1.2.3                 
+##  [79] shape_1.4.6                 parallelly_1.32.0          
+##  [81] spatstat.random_3.1-5       CNEr_1.32.0                
+##  [83] scales_1.4.0                memoise_2.0.1              
+##  [85] ica_1.0-3                   zlibbioc_1.44.0            
+##  [87] compiler_4.2.1              BiocIO_1.6.0               
+##  [89] RColorBrewer_1.1-3          clue_0.3-64                
+##  [91] fitdistrplus_1.1-8          Rsamtools_2.12.0           
+##  [93] cli_3.6.3                   listenv_0.8.0              
+##  [95] pbapply_1.5-0               tidyselect_1.2.1           
+##  [97] stringi_1.8.4               highr_0.9                  
+##  [99] yaml_2.3.5                  sass_0.4.2                 
+## [101] tools_4.2.1                 future.apply_1.9.0         
+## [103] circlize_0.4.15             rstudioapi_0.17.1          
+## [105] TFMPvalue_0.0.9             foreach_1.5.2              
+## [107] farver_2.1.2                Rtsne_0.16                 
+## [109] digest_0.6.36               shiny_1.7.1                
+## [111] pracma_2.4.2                later_1.3.0                
+## [113] RcppAnnoy_0.0.19            httr_1.4.7                 
+## [115] AnnotationDbi_1.60.2        colorspace_2.1-0           
+## [117] XML_3.99-0.10               tensor_1.5                 
+## [119] reticulate_1.25             uwot_0.1.14                
+## [121] spatstat.utils_3.1-1        graphlayouts_0.8.2         
+## [123] sp_1.5-0                    plotly_4.10.0              
+## [125] xtable_1.8-4                jsonlite_1.8.8             
+## [127] poweRlaw_0.70.6             tidygraph_1.3.1            
+## [129] R6_2.5.1                    pillar_1.9.0               
+## [131] htmltools_0.5.2             mime_0.12                  
+## [133] glue_1.7.0                  fastmap_1.2.0              
+## [135] DT_0.28                     BiocParallel_1.32.6        
+## [137] codetools_0.2-18            utf8_1.2.4                 
+## [139] lattice_0.20-45             bslib_0.4.0                
+## [141] spatstat.sparse_3.0-2       leiden_0.4.2               
+## [143] zip_2.2.1                   GO.db_3.16.0               
+## [145] survival_3.4-0              rmarkdown_2.16             
+## [147] GetoptLong_1.0.5            GenomeInfoDbData_1.2.9     
+## [149] iterators_1.0.14            reshape2_1.4.4</code></pre>
 </div>
 
 

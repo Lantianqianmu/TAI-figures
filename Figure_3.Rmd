@@ -1,11 +1,11 @@
 ---
 title: "Figure 3"
-author: "Runze Xie @ institute of biophysics, 11/07/2025"
+author: "Runze Xie @ institute of biophysics, 04/24/2026"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_knit$set(root.dir = "/home/zeemeeuw/data/TAI-Rmd/V1_data")
+knitr::opts_knit$set(root.dir = '/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
 ```
 
 ### Loading packages
@@ -26,18 +26,16 @@ library(ggraph)
 library(igraph)
 library(ggrepel)
 library(BSgenome.Mmusculus.UCSC.mm10)
-source("/home/zeemeeuw/data/TAI-Rmd/V1_code/utils.R")
-setwd('/home/zeemeeuw/data/TAI-Rmd/V1_data')
+source("/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_code/utils.R")
+setwd('/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
 ```
 
 ### Read Seurat and ArchR object for plotting. 
 #### Critical: change the directory to your working dir accordingly!
 The DORC matrix was called with FigR. Here we provide called peak-GEX correlation dataframe and MAGIC-smoothed DORC/RNA matrix.
 ```{r include = TRUE}
-RDSdir <- "/home/zeemeeuw/data/mmJoint/RNA/data/lm_ym/" # output RDS file dir
-ATACdir <- "/home/zeemeeuw/data/mmJoint/ATAC/overlapped_harmony/" # ATAC root dir
-
-# read Seurat and ArchR object
+RDSdir <- "/media/zeemeeuw/TAI-seq/mmTAI/RNA/" # output RDS file dir
+ATACdir <- "/media/zeemeeuw/TAI-seq/mmTAI/ATAC/overlapped_harmony/" # ATAC root dir
 seu <- readRDS(paste0(RDSdir, "lm_merged_overlapped_harmony.rds"))
 proj <- loadArchRProject(ATACdir)
 
@@ -213,7 +211,7 @@ if(FALSE){
   res_dorc_used <- t(res_dorc[,rownames(res_positive)])
   res_rna_used <- t(res_rna[,rownames(res_positive)])
 
-  
+  cp_list <- list()
   cp_list[["cp1_predi"]] <- list(dorc = res_dorc_used[genes_predi[[1]],], rna = res_rna_used[genes_predi[[1]],], residual = res_positive[genes_predi[[1]],])
   cp_list[["cp1_maint"]] <- list(dorc = res_dorc_used[genes_maint[[1]],], rna = res_rna_used[genes_maint[[1]],], residual = res_positive[genes_maint[[1]],])
   
@@ -476,7 +474,7 @@ wrap_plots(plot_list, ncol = 2)
   
 
 ### TF regulatory networks were called with FigR
-```{r eval=FALSE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE}
+```{r eval=FALSE, include=FALSE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE}
 
 if(FALSE){
   pwm <- readRDS("/home/zeemeeuw/YangLab/JoINT-seq/FigR/FigR-master/data/cisBP_mouse_pfms_2021.rds")
@@ -494,12 +492,52 @@ if(FALSE){
   grn_names <- c("grn_ln", "grn_sp", "grn_lv", "grn_bl", "grn_ln_re", "grn_sp_re", "grn_lv_re", "grn_bl_re")
   cell_names <- list(cell_ln, cell_sp, cell_lv, cell_bl, cell_ln_re, cell_sp_re, cell_lv_re, cell_bl_re)
   grn_list <- list()
+  
   for (i in seq_along(grn_names)) {
     grn_list[[grn_names[i]]] <- analyze_FigR_GRN(ATAC.se = pkm[,cell_names[[i]]], dorcK = 30, dorcTab = gpcorr.use, n_bg = 50, genome = "mm10", pwm = pwm,
                                                  dorcMat = dorcMat_sm_norm[,cell_names[[i]]], rnaMat = rnaMat_sm_norm[,cell_names[[i]]], dorcGenes = dorcGenes, nCores = 4)
     gc()
-    
+
   }
+  
+  for (i in seq_along(c("grn_ln", "grn_sp"))) {
+  grn_list[[grn_names[i]]] <- analyze_FigR_GRN(ATAC.se = pkm[,cell_names[[i]]], dorcK = 30, dorcTab = gpcorr.use, n_bg = 50, genome = "mm10", pwm = pwm,
+                                               dorcMat = dorcMat_sm_norm[,cell_names[[i]]], rnaMat = rnaMat_sm_norm[,cell_names[[i]]], dorcGenes = dorcGenes, nCores = 3)
+  gc()
+
+  }
+  save(grn_list, file = paste0(RDSdir, "lm_merged_overlapped_harmony_GRN_list_by_tissue_2.RData"))
+  
+  
+  
+  
+  
+  i <- 1
+  grn_ln <- analyze_FigR_GRN(ATAC.se = pkm[,cell_names[[i]]], dorcK = 30, dorcTab = gpcorr.use, n_bg = 50, genome = "mm10", pwm = pwm,
+                                               dorcMat = dorcMat_sm_norm[,cell_names[[i]]], rnaMat = rnaMat_sm_norm[,cell_names[[i]]], dorcGenes = dorcGenes, nCores = 4)
+  gc()
+  save(grn_ln, file = paste0(RDSdir, "lm_merged_overlapped_harmony_GRN_ln.RData"))
+  
+  i <- 2
+  grn_sp <- analyze_FigR_GRN(ATAC.se = pkm[,cell_names[[i]]], dorcK = 30, dorcTab = gpcorr.use, n_bg = 50, genome = "mm10", pwm = pwm,
+                                               dorcMat = dorcMat_sm_norm[,cell_names[[i]]], rnaMat = rnaMat_sm_norm[,cell_names[[i]]], dorcGenes = dorcGenes, nCores = 4)
+  gc()
+  save(grn_sp, file = paste0(RDSdir, "lm_merged_overlapped_harmony_GRN_sp.RData"))
+
+  grn_all <- analyze_FigR_GRN(ATAC.se = pkm, dorcK = 30, dorcTab = gpcorr.use, n_bg = 50, genome = "mm10", pwm = pwm,
+                                               dorcMat = dorcMat_sm_norm, rnaMat = rnaMat_sm_norm, dorcGenes = dorcGenes, nCores = 3)
+  save(grn_all, file = paste0(RDSdir, "lm_merged_overlapped_harmony_GRN_all.RData"))
+  
+  # grn_list <- list()
+  #   
+  # i <- 1
+  # grn_list[[grn_names[i]]] <- analyze_FigR_GRN(ATAC.se = pkm[,cell_names[[i]]], dorcK = 30, dorcTab = gpcorr.use, n_bg = 50, genome = "mm10", pwm = pwm,
+  #                                              dorcMat = dorcMat_sm_norm[,cell_names[[i]]], rnaMat = rnaMat_sm_norm[,cell_names[[i]]], dorcGenes = dorcGenes, nCores = 2)
+  # 
+  # i <- 2
+  # grn_list[[grn_names[i]]] <- analyze_FigR_GRN(ATAC.se = pkm[,cell_names[[i]]], dorcK = 30, dorcTab = gpcorr.use, n_bg = 50, genome = "mm10", pwm = pwm,
+  #                                              dorcMat = dorcMat_sm_norm[,cell_names[[i]]], rnaMat = rnaMat_sm_norm[,cell_names[[i]]], dorcGenes = dorcGenes, nCores = 2)
+  
   save(grn_list, file = paste0(RDSdir, "lm_merged_overlapped_harmony_GRN_list_by_tissue.RData"))
 }
 
@@ -508,52 +546,8 @@ if(FALSE){
 
 ### TF regulators of each chromatin checkpoint
 ```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=8}
-load(paste0(RDSdir, "Spleen_DORC_RNA_residual_checkpoint.RData"))
-load(paste0(RDSdir, "lm_merged_overlapped_harmony_GRN_list_by_tissue.RData"))
-grn <- grn_list$grn_sp
+data <- read_tsv('source_fig_3f.tsv')
 
-# lollipop
-groups <- rep(c("predisposition", "maintenance"), 4)
-checkpoints <- c(1, 1, 2, 2, 3, 3, 4, 4)
-data <- lapply(seq_along(1:8), function(i){
-  group <- groups[i]
-  checkpoint <- checkpoints[i]
-  genes <- rownames(cp_list[[i]]$residual)
-  grn_used <- grn %>% dplyr::filter(DORC %in% genes) %>% 
-    dplyr::filter(abs(Score) >= 0.8) %>% 
-    group_by(Motif) %>% 
-    dplyr::summarise(corr = mean(Corr), n = n()) %>% 
-    dplyr::arrange(desc(n), .by_group = TRUE) %>% 
-    dplyr::mutate(group = group, checkpoint = checkpoint)
-}) %>% Reduce("rbind", .) %>% 
-  dplyr::mutate_at(vars(checkpoint), ~as.integer(.))
-cp1_pre <- c("Bach2", "Nfe2l2", "Atf6", "Nfkb2", "Tbx21")
-cp1_mai <- c("Zeb1", "Tcf3", "Zfp281", "Bhlhe40", "Tcf7")
-cp2_pre <-c("Bach2", "Tbx21", "Nfe2l2", "Arid5b", "Klf12")
-cp2_mai <-c("Tcf3", "Zeb2", "Zeb1", "Tcf7", "Nfkb2")
-cp3_pre <-c("E2f7", "Foxo3", "Foxp1", "Stat3", "Tcf7")
-cp3_mai <-c("Bach2", "Nfe2l2", "Arid5b", "Atf6", "Tet1")
-cp4_pre <-c("Tcf3", "Zeb1", "Nfkb2", "Zeb2", "Bach2")
-cp4_mai <-c("Tbx21", "Bach2", "Klf12", "Rara", "Trps1")
-
-pdata <- dplyr::bind_rows(dplyr::filter(data, ((group == "predisposition") & (checkpoint == 1) & (Motif %in% cp1_pre))),
-                          dplyr::filter(data, ((group == "maintenance") & (checkpoint == 1) & (Motif %in% cp1_mai))),
-                          dplyr::filter(data, ((group == "predisposition") & (checkpoint == 2) & (Motif %in% cp2_pre))),
-                          dplyr::filter(data, ((group == "maintenance") & (checkpoint == 2) & (Motif %in% cp2_mai))),
-                          dplyr::filter(data, ((group == "predisposition") & (checkpoint == 3) & (Motif %in% cp3_pre))),
-                          dplyr::filter(data, ((group == "maintenance") & (checkpoint == 3) & (Motif %in% cp3_mai))),
-                          dplyr::filter(data, ((group == "predisposition") & (checkpoint == 4) & (Motif %in% cp4_pre))),
-                          dplyr::filter(data, ((group == "maintenance") & (checkpoint == 4) & (Motif %in% cp4_mai)))) %>% 
-  dplyr::group_by(group, checkpoint) %>% 
-  dplyr::arrange(dplyr::desc(n), .by_group = TRUE) %>% 
-  group_by(group) %>% 
-  dplyr::mutate(x = row_number(),
-                y = if_else(group == "predisposition", n, -n)) %>% 
-  dplyr::mutate(ytext = if_else(group == "predisposition", n+10, -n-10)) %>% 
-  dplyr::mutate(color = case_when(y > 30 ~ 30, y < -30 ~ -30, .default = y))
-motif_selected <- pdata %>% pull("Motif")
-data <- pdata
-write_tsv(data, "source_fig_3G.tsv", na = "")
 ggplot(data, aes(x = x, y = y, color = corr)) +
   theme_bw() +
   ylim(-80, 80) +
@@ -621,37 +615,9 @@ wrap_plots(plot_list, ncol = 2)
 ### TF regulatory networks
 ```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=8}
 
-load(paste0(RDSdir, "Spleen_DORC_RNA_residual_checkpoint.RData"))
-load(paste0(RDSdir, "lm_merged_overlapped_harmony_GRN_list_by_tissue.RData"))
-grn <- grn_list$grn_sp
+conn <- read_tsv('source_fig_3g_conn.tsv')
+vertices <- read_tsv('source_fig_3g_vertices.tsv')
 
-conn <- grn %>% 
-  dplyr::filter(Motif %in% motif_selected) %>% 
-  dplyr::mutate(Motif = paste0("Motif:", Motif)) %>% 
-  dplyr::filter(abs(Score) >= 0.8) %>% 
-  dplyr::mutate(group = if_else(Corr > 0, "Positive", "Negative")) %>% 
-  dplyr::select(DORC, Motif, group)
-
-vertices_DORC <- conn %>%
-  ungroup() %>% 
-  dplyr::select(DORC) %>% 
-  group_by(DORC) %>% 
-  dplyr::summarise(n = n()) %>% 
-  rename_with(~c("name", "n")) %>% 
-  dplyr::mutate(group = "DORC")
-
-vertices_TF <- conn %>%
-  ungroup() %>% 
-  dplyr::select(Motif) %>% 
-  group_by(Motif) %>% 
-  dplyr::summarise(n = n()) %>% 
-  rename_with(~c("name", "n")) %>% 
-  dplyr::mutate(group = "Motif")
-vertices <- bind_rows(vertices_DORC, vertices_TF)
-
-conn <- conn %>% dplyr::select(DORC, Motif, group) %>% 
-  rename_with(~c("from", "to", "group")) %>% 
-  dplyr::mutate(value = 1)
 gr <- graph_from_data_frame(conn, vertices = vertices)
 
 set.seed(61)

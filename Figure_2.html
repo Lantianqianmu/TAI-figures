@@ -376,15 +376,15 @@ library(openxlsx)
 library(readxl)
 library(ggalluvial)
 library(ggforce)
-source(&quot;/home/zeemeeuw/data/TAI-Rmd/V1_code/utils.R&quot;)
-setwd(&#39;/home/zeemeeuw/data/TAI-Rmd/V1_data&#39;)</code></pre>
+source(&quot;/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_code/utils.R&quot;)
+setwd(&#39;/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data&#39;)</code></pre>
 </div>
 <div id="read-seurat-and-archr-object-for-plotting." class="section level3">
 <h3>Read Seurat and ArchR object for plotting.</h3>
 <div id="critical-change-the-directory-to-your-working-dir-accordingly" class="section level4">
 <h4>Critical: change the directory to your working dir accordingly!</h4>
-<pre class="r"><code>RDSdir &lt;- &quot;/home/zeemeeuw/data/mmJoint/RNA/data/lm_ym/&quot; # output RDS file dir
-ATACdir &lt;- &quot;/home/zeemeeuw/data/mmJoint/ATAC/overlapped_harmony/&quot; # ATAC root dir
+<pre class="r"><code>RDSdir &lt;- &quot;/media/zeemeeuw/TAI-seq/mmTAI/RNA/&quot; # output RDS file dir
+ATACdir &lt;- &quot;/media/zeemeeuw/TAI-seq/mmTAI/ATAC/overlapped_harmony/&quot; # ATAC root dir
 seu &lt;- readRDS(paste0(RDSdir, &quot;lm_merged_overlapped_harmony.rds&quot;))
 proj &lt;- loadArchRProject(ATACdir)</code></pre>
 <pre><code>## Successfully loaded ArchRProject!</code></pre>

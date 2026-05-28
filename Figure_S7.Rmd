@@ -5,7 +5,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_knit$set(root.dir = "/home/zeemeeuw/data/TAI-Rmd/V1_data")
+knitr::opts_knit$set(root.dir = '/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
 ```
 
 ### Loading packages
@@ -21,14 +21,14 @@ library(scplotter)
 library(openxlsx)
 library(readxl)
 library(ggrepel)
-source("/home/zeemeeuw/data/TAI-Rmd/V1_code/utils.R")
-setwd('/home/zeemeeuw/data/TAI-Rmd/V1_data')
+source("/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_code/utils.R")
+setwd('/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
 ```
 
 ### Read Seurat and ArchR object for plotting. 
 #### Critical: change the directory to your working dir accordingly!
 ```{r include = TRUE}
-RDSdir <- "/home/zeemeeuw/data/mmJoint/RNA/data/lm_ym/" # output RDS file dir
+RDSdir <- "/media/zeemeeuw/TAI-seq/mmTAI/RNA/" # output RDS file dir
 seu <- readRDS(paste0(RDSdir, "lm_merged_overlapped_harmony.rds"))
 ```
 

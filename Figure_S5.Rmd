@@ -1,11 +1,11 @@
 ---
 title: "Figure S5"
-author: "Runze Xie @ institute of biophysics, 11/07/2025"
+author: "Runze Xie @ institute of biophysics, 28/05/2026"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_knit$set(root.dir = "/home/zeemeeuw/data/TAI-Rmd/V1_data")
+knitr::opts_knit$set(root.dir = '/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
 ```
 
 ### Loading packages
@@ -21,15 +21,15 @@ library(scplotter)
 library(openxlsx)
 library(readxl)
 library(circlize)
-source("/home/zeemeeuw/data/TAI-Rmd/V1_code/utils.R")
-setwd('/home/zeemeeuw/data/TAI-Rmd/V1_data')
+source("/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_code/utils.R")
+setwd('/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
 ```
 
 ### Read Seurat and ArchR object for plotting. 
 #### Critical: change the directory to your working dir accordingly!
 ```{r include = TRUE}
-RDSdir <- "/home/zeemeeuw/data/mmJoint/RNA/data/lm_ym/" # output RDS file dir
-ATACdir <- "/home/zeemeeuw/data/mmJoint/ATAC/overlapped_harmony/" # ATAC root dir
+RDSdir <- "/media/zeemeeuw/TAI-seq/mmTAI/RNA/" # output RDS file dir
+ATACdir <- "/media/zeemeeuw/TAI-seq/mmTAI/ATAC/overlapped_harmony/" # ATAC root dir
 seu <- readRDS(paste0(RDSdir, "lm_merged_overlapped_harmony.rds"))
 proj <- loadArchRProject(ATACdir)
 ```
@@ -58,24 +58,7 @@ tissue_colors <-  c("Spleen" = "#36A23D", "Ln" = "#2884E7", "Liver" = "#817ab9",
 ### Circos plot
 ```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=10, fig.width=10}
 
-meta <- readxl::read_excel("joint.Lm-overlapped-clean.seurat.meta.xlsx")
-tcr_paired <- readxl::read_excel("Lm-TCR4.57-clonotypes-paired in rna.xlsx") %>% 
-  dplyr::mutate(tissue = str_extract(Tissue_time, "(.*)-", group = 1)) %>% 
-  group_by(CDRa_CDRb, timepoint, tissue, barcode) %>% 
-  distinct(CDRa_CDRb, timepoint, tissue, barcode, .keep_all = TRUE) %>% 
-  ungroup()
-tcr_all <- readxl::read_excel("Lm-TCR4.57-clonotypes-all in rna.xlsx")
-
-bc_paired <- tcr_paired$barcode
-bc_a <- tcr_all$barcode[is.na(tcr_all$chainB)]
-bc_b <- tcr_all$barcode[is.na(tcr_all$chainA)]
-
-meta <- meta %>% dplyr::mutate(has_paired_tcr = if_else(cellnames %in% tcr_paired$barcode, "Y", "N"),
-                               has_all_tcr = if_else(cellnames %in% tcr_all$barcode, "Y", "N"),
-                               tcr = case_when(cellnames %in% bc_paired ~ "paired",
-                                               cellnames %in% bc_a ~ "A only",
-                                               cellnames %in% bc_b ~ "B only",
-                                               .default = "undetected"))
+meta <- read_tsv('source_fig_S5b.tsv')
 
 meta_summary <- meta %>% 
   group_by(sample) %>% 

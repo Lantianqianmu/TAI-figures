@@ -1,11 +1,11 @@
 ---
 title: "Figure S19"
-author: "Runze Xie @ institute of biophysics, 01/05/2026"
+author: "Runze Xie @ institute of biophysics, 04/24/2026"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_knit$set(root.dir = "/home/zeemeeuw/data/TAI-Rmd/V1_data")
+knitr::opts_knit$set(root.dir = '/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
 ```
 
 
@@ -21,22 +21,18 @@ library(patchwork)
 library(readxl)
 library(openxlsx)
 library(Seurat)
-source("/home/zeemeeuw/data/TAI-Rmd/V1_code/utils.R")
-setwd('/home/zeemeeuw/data/TAI-Rmd/V1_data')
+source("/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_code/utils.R")
+setwd('/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
 ```
 
 ### Read Seurat object for plotting. 
 #### Critical: change the directory to your working dir accordingly!
 ```{r include = TRUE}
-RDSdir <- "/home/zeemeeuw/data/mmJoint/RNA/data/lm_ym/" # output RDS file dir
-
-# read Seurat and ArchR object
+RDSdir <- "/media/zeemeeuw/TAI-seq/mmTAI/RNA/" # output RDS file dir
 seu <- readRDS(paste0(RDSdir, "lm_merged_overlapped_harmony.rds"))
 
-# load smoothed DORC and RNA matrix
-
+# load calculated gene module score
 load(paste0(RDSdir, "calculated_seurat_gene_module.Rdata"))
-load(paste0(RDSdir, "gene_module.Rdata"))
 
 k <- 10
 
@@ -79,23 +75,34 @@ meta <- read.xlsx('Lm-TCR4.57-clonotypes-paired in rna.xlsx') %>%
   dplyr::mutate(total_n = n()) %>% 
   ungroup()
 
-df_tcr <- read_tsv('TCR_cloned_CDR.tsv') %>% 
-  dplyr::filter(!is.na(group)) %>% 
+tibble_tcr <- read_tsv('meta_cloned_TCR.tsv') %>% 
   dplyr::mutate_at(vars('id'), as.character) %>% 
   dplyr::mutate_at(vars('id'), ~factor(.x, levels = level_TCR)) %>% 
   arrange(id) %>% 
-  column_to_rownames('id') %>% 
-  # dplyr::filter(group == "Primary") %>% 
+  # dplyr::filter(group == "Primary") %>%
   dplyr::filter(CDRa_CDRb %in% meta$CDRa_CDRb)
 
-tibble_tcr <- df_tcr %>% rownames_to_column('id')
+# 
+# dft <- seu@meta.data %>% as_tibble() %>% 
+#   dplyr::select(timepoint, tissue, cell_module, chain1, chain2, cellnames) 
+# d1 <- dft %>% dplyr::select(timepoint, tissue, cell_module, chain1, cellnames) %>% rename_with(~c("timepoint", "tissue", "cell_module", "chain", "cellnames"))
+# d2 <- dft %>% dplyr::select(timepoint, tissue, cell_module, chain2, cellnames) %>% rename_with(~c("timepoint", "tissue", "cell_module", "chain", "cellnames"))
+# dft <- bind_rows(d1, d2) %>% 
+#   dplyr::filter(tissue == "Spleen") %>%  ### filter sp
+#   dplyr::filter(!is.na(chain)) %>% 
+#   group_by(timepoint, chain) %>% 
+#   dplyr::mutate(count_timepoint = n())
 
-
-dft <- seu@meta.data %>% as_tibble() %>% 
-  dplyr::select(timepoint, tissue, cell_module, chain1, chain2, cellnames) 
-d1 <- dft %>% dplyr::select(timepoint, tissue, cell_module, chain1, cellnames) %>% rename_with(~c("timepoint", "tissue", "cell_module", "chain", "cellnames"))
-d2 <- dft %>% dplyr::select(timepoint, tissue, cell_module, chain2, cellnames) %>% rename_with(~c("timepoint", "tissue", "cell_module", "chain", "cellnames"))
-dft <- bind_rows(d1, d2) %>% 
+dft <- read.xlsx('Lm-TCR4.57-clonotypes-paired in rna.xlsx') %>% 
+  dplyr::mutate(tissue = str_extract(Tissue_time, "(.*)-", group = 1)) %>% 
+  group_by(CDRa_CDRb, timepoint, tissue, barcode) %>%
+  distinct(CDRa_CDRb, timepoint, tissue, barcode, .keep_all = TRUE) %>%
+  slice_head(n = 2) %>% 
+  group_by(CDRa_CDRb) %>% 
+  dplyr::mutate(count = n()) %>% 
+  left_join(seu@meta.data[,c('cell_module', 'cellnames')], by = join_by('barcode' == 'cellnames')) %>% 
+  dplyr::select(timepoint, tissue, cell_module, CDRa_CDRb, barcode) %>% 
+  rename_with(~c("timepoint", "tissue", "cell_module", "chain", "cellnames")) %>% 
   dplyr::filter(tissue == "Spleen") %>%  ### filter sp
   dplyr::filter(!is.na(chain)) %>% 
   group_by(timepoint, chain) %>% 
@@ -103,7 +110,7 @@ dft <- bind_rows(d1, d2) %>%
 
 dft_d8 <- dft %>% 
   # dplyr::filter(timepoint == "d8") %>% 
-  dplyr::filter(chain %in% df_tcr$CDRa_CDRb) %>% 
+  dplyr::filter(chain %in% tibble_tcr$CDRa_CDRb) %>% 
   inner_join(tibble_tcr, by = join_by("chain" == "CDRa_CDRb")) %>% 
   group_by(chain) %>% 
   dplyr::mutate(EMTratio = sum(cell_module %in% c("Effector-memory_transition_1", "Effector-memory_transition_2", "Effector-memory_transition_3")) / n()) %>% 
@@ -174,6 +181,7 @@ data_56_sort <- data_time %>%
 tcr_order <- as.character(unique(data_56_sort$id))
 data_56_sort <- data_56_sort %>% dplyr::mutate_at(vars(id), ~factor(.x, levels = tcr_order))
     
+
 plist <- list()
 for (metric in c("Cytotoxicity", "Chemokine/Chemokine receptor", "Adhesion")) {
   p <- ggplot(data_56_sort, aes(x = id, y = !!sym(metric), fill = type)) +

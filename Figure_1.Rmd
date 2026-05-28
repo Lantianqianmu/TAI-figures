@@ -1,11 +1,11 @@
 ---
 title: "Figure 1"
-author: "Runze Xie @ institute of biophysics, 11/07/2025"
+author: "Runze Xie @ institute of biophysics, 28/05/2026"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_knit$set(root.dir = "/home/zeemeeuw/data/TAI-Rmd/V1_data")
+knitr::opts_knit$set(root.dir = "/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data")
 ```
 
 
@@ -17,12 +17,10 @@ library(dplyr)
 library(tibble)
 library(scattermore)
 library(readr)
-library(Seurat)
-library(scplotter)
 library(openxlsx)
 library(readxl)
-source("/home/zeemeeuw/data/TAI-Rmd/V1_code/utils.R")
-setwd('/home/zeemeeuw/data/TAI-Rmd/V1_data')
+source("/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_code/utils.R")
+setwd('/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
 ```
 
 ### Set parameters for plotting
@@ -65,68 +63,8 @@ color_patient <- c("D2" = "#FCD48F",
 ATAC
 ```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=3, fig.width=4}
 
-joint_3t3 <- read.delim("G3MERGE-ata_mm10_1_fragments_count.txt", header = FALSE, stringsAsFactors = FALSE, col.names = c("barcode", "counts"))
-rownames(joint_3t3) <- joint_3t3$barcode
-whitelist_1 <- read.csv("G3-ata_mm10_1_bc_whitelist.txt")$x
-joint_3t3 <- joint_3t3[joint_3t3$barcode %in% whitelist_1,]
-joint_3t3$type <- "JoINT-seq 37"
-joint_3t3$assay <- "JoINT-seq"
-# joint_3t3 <- joint_3t3[joint_3t3$counts >= 3000,]
-joint_3t3$x <- 1
 
-
-joint_3t32 <- read.delim("G3MERGE-ata_mm10_2_fragments_count.txt", header = FALSE, stringsAsFactors = FALSE, col.names = c("barcode", "counts"))
-rownames(joint_3t32) <- joint_3t32$barcode
-whitelist_2 <- read.csv("G3-ata_mm10_2_bc_whitelist.txt")$x
-joint_3t32 <- joint_3t32[joint_3t32$barcode %in% whitelist_2,]
-joint_3t32$type <- "JoINT-seq 50"
-joint_3t32$assay <- "JoINT-seq"
-# joint_3t32 <- joint_3t32[joint_3t32$counts >= 3000,]
-joint_3t32$x <- 2
-
-multiome_GM <- read.delim("multiome-GM12878-atac.csv", header = TRUE, sep = ",", col.names = c("n", "project_cellnames", "counts", "barcode"))
-multiome_GM <- multiome_GM[,c("barcode", "counts")]
-multiome_GM$type <- "10X multiome"
-multiome_GM$assay <- "10X multiome"
-multiome_GM$x <- 3
-
-
-share_GM2 <- read.delim("share-GM12878rep1.fragments.count.txt", header = FALSE, col.names = c("barcode", "counts"))
-# share_GM2$type <- "GM12878_rep1"
-share_GM2$type <- "SHARE-seq"
-share_GM2$assay <- "SHARE-seq"
-share_GM2 <- share_GM2[share_GM2$counts >= 3000,]
-share_GM2$x <- 4
-
-paired_293T <- read.csv("paire-293T-fragment.count.csv", header = TRUE, row.names = 1, col.names = c("barcode", "counts", "identity"))
-paired_293T <- paired_293T[,c(1,2)]
-paired_293T$type <- "Paired-seq"
-paired_293T$assay <- "Paired-seq"
-paired_293T <- paired_293T[paired_293T$counts >= 500,]
-paired_293T$x <- 5
-
-sciCAR_293T <- read.csv("sciCAR-293T-fragment.count.csv", header = TRUE, row.names = 1, col.names = c("barcode", "counts", "identity"))
-sciCAR_293T <- sciCAR_293T[,c(1,2)]
-sciCAR_293T$type <- "sci-CAR-seq"
-sciCAR_293T$assay <- "sci-CAR-seq"
-sciCAR_293T <- sciCAR_293T[sciCAR_293T$counts >= 100,]
-sciCAR_293T$x <- 6
-
-SNARE_GM <- read.csv("SNARE-GM12878-fragment.count.csv", header = TRUE, row.names = 1, col.names = c("barcode", "counts", "identity"))
-SNARE_GM <- SNARE_GM[,c(1,2)]
-SNARE_GM$type <- "SNARE-seq"
-SNARE_GM$assay <- "SNARE-seq"
-SNARE_GM$x <- 7
-
-data <- rbind(joint_3t3, joint_3t32, multiome_GM, share_GM2, paired_293T, sciCAR_293T, SNARE_GM)
-data$type <- factor(data$type, levels = c("JoINT-seq 37", "JoINT-seq 50", "10X multiome", "SHARE-seq", "Paired-seq", "sci-CAR-seq", "SNARE-seq"))
-data$assay <- factor(data$assay, levels = c("JoINT-seq", "10X multiome", "SHARE-seq", "Paired-seq", "sci-CAR-seq", "SNARE-seq"))
-data$y <- log10(data$counts)
-
-data$type <- factor(data$type, levels = c("JoINT-seq 37", "JoINT-seq 50", "10X multiome", "SHARE-seq", "Paired-seq", "sci-CAR-seq", "SNARE-seq"))
-data$assay <- factor(data$assay, levels = c("JoINT-seq", "10X multiome", "SHARE-seq", "Paired-seq", "sci-CAR-seq", "SNARE-seq"))
-
-write_tsv(data, "source_fig_1c.tsv")
+data <- read_tsv("source_fig_1c.tsv")
 
 ggplot(data = data, aes(x = x, y = y)) +
   theme_classic() +
@@ -141,85 +79,21 @@ ggplot(data = data, aes(x = x, y = y)) +
   scale_y_continuous(limits = c(2, 6.1)) +
   xlab("") +
   ylab(expression(log[10]~(fragments~per~cell))) +
-  annotate(geom = "text", x = 1, y = 6, colour = "red", size = 3.5, angle = 30, label = round(median(joint_3t3$counts))) +
-  annotate(geom = "text", x = 2, y = 6, colour = "red", size = 3.5, angle = 30, label = round(median(joint_3t32$counts))) +
-  annotate(geom = "text", x = 3, y = 6, colour = "black", size = 3.5, angle = 30, label = round(median(multiome_GM$counts))) +
-  annotate(geom = "text", x = 4, y = 6, colour = "black", size = 3.5, angle = 30, label = round(median(share_GM2$counts))) +
-  annotate(geom = "text", x = 5, y = 6, colour = "black", size = 3.5, angle = 30, label = round(median(paired_293T$counts))) +
-  annotate(geom = "text", x = 6, y = 6, colour = "black", size = 3.5, angle = 30, label = round(median(sciCAR_293T$counts))) +
-  annotate(geom = "text", x = 7, y = 6, colour = "black", size = 3.5, angle = 30, label = round(median(SNARE_GM$counts)))
+  annotate(geom = "text", x = 1, y = 6, colour = "red", size = 3.5, angle = 30, label = round(median(data[data$type == "JoINT-seq 37",]$counts))) +
+  annotate(geom = "text", x = 2, y = 6, colour = "red", size = 3.5, angle = 30, label = round(median(data[data$type == "JoINT-seq 50",]$counts))) +
+  annotate(geom = "text", x = 3, y = 6, colour = "black", size = 3.5, angle = 30, label = round(median(data[data$type == "10X multiome",]$counts))) +
+  annotate(geom = "text", x = 4, y = 6, colour = "black", size = 3.5, angle = 30, label = round(median(data[data$type == "SHARE-seq",]$counts))) +
+  annotate(geom = "text", x = 5, y = 6, colour = "black", size = 3.5, angle = 30, label = round(median(data[data$type == "Paired-seq",]$counts))) +
+  annotate(geom = "text", x = 6, y = 6, colour = "black", size = 3.5, angle = 30, label = round(median(data[data$type == "sci-CAR-seq",]$counts))) +
+  annotate(geom = "text", x = 7, y = 6, colour = "black", size = 3.5, angle = 30, label = round(median(data[data$type == "SNARE-seq",]$counts)))
 
 ```
 
 RNA
 ```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=3, fig.width=4}
 
-  joint_3t3_umis <- read.delim("G3MERGE-rna_mm10_1_umis_count.txt", header = FALSE, stringsAsFactors = FALSE, col.names = c("barcode", "counts"))
-  joint_3t3_genes <- read.delim("G3MERGE-rna_mm10_1_genes_count.txt", header = FALSE, stringsAsFactors = FALSE, col.names = c("barcode", "genes"))
-  joint_3t3 <- merge(joint_3t3_umis, joint_3t3_genes, by = "barcode")
-  rownames(joint_3t3) <- joint_3t3$barcode
-  whitelist_1 <- read.csv("G3-rna_mm10_1_bc_whitelist.txt")$x
-  joint_3t3 <- joint_3t3[joint_3t3$barcode %in% whitelist_1, ]
-  joint_3t3$type <- "JoINT-seq 37"
-  joint_3t3$assay <- "JoINT-seq"
-  # joint_3t3 <- joint_3t3[joint_3t3$counts >= 3000,] # 2400 for unstranded featureCounts
-  joint_3t3$x <- 1
-  
-  joint_3t3_umis2 <- read.delim("G3MERGE-rna_mm10_2_umis_count.txt", header = FALSE, stringsAsFactors = FALSE, col.names = c("barcode", "counts"))
-  joint_3t3_genes2 <- read.delim("G3MERGE-rna_mm10_2_genes_count.txt", header = FALSE, stringsAsFactors = FALSE, col.names = c("barcode", "genes"))
-  joint_3t32 <- merge(joint_3t3_umis2, joint_3t3_genes2, by = "barcode")
-  rownames(joint_3t32) <- joint_3t32$barcode
-  whitelist_2 <- read.csv("G3-rna_mm10_2_bc_whitelist.txt")$x
-  joint_3t32 <- joint_3t32[joint_3t32$barcode %in% whitelist_2, ]
-  joint_3t32$type <- "JoINT-seq 50"
-  joint_3t32$assay <- "JoINT-seq"
-  # joint_3t3 <- joint_3t3[joint_3t3$counts >= 3000,] # 2400 for unstranded featureCounts
-  joint_3t32$x <- 2
-  
-  multiome_GM <- read.delim("multiome-GM12878-RNA.csv", header = TRUE, sep = ",")
-  multiome_GM <- multiome_GM[c(2,4,6,8,10)]
-  colnames(multiome_GM) <- c( "barcode", "project_cellnames", "counts", "genes", "percent.mt")
-  multiome_GM <- multiome_GM[,c("barcode", "counts", "genes")]
-  multiome_GM$type <- "10X multiome"
-  multiome_GM$assay <- "10X multiome"
-  multiome_GM$x <- 3
 
-  share_GM2 <- read.csv("share-GM12878rep1-umi-gene-cell.count.csv", header = TRUE, col.names = c("barcode", "counts", "genes"))
-  # share_GM2$type <- "GM12878_rep1"
-  share_GM2$type <- "SHARE-seq"
-  share_GM2$assay <- "SHARE-seq"
-  share_GM2 <- share_GM2[share_GM2$counts >= 3000,]
-  share_GM2$x <- 4
-  
-  paired_293T <- read.csv("paire-293T-umi-gene.count.csv", header = TRUE, row.names = 1, col.names = c("barcode", "counts", "genes", "identity"))
-  paired_293T <- paired_293T[,c(1,2,3)]
-  paired_293T$type <- "Paired-seq"
-  paired_293T$assay <- "Paired-seq"
-  paired_293T <- paired_293T[paired_293T$counts >= 300,]
-  paired_293T$x <- 5
-  
-  sciCAR_293T <- read.csv("sciCAR-293T-umi-gene-cell.count.csv", header = TRUE, col.names = c("barcode", "counts", "genes", "identity"))
-  sciCAR_293T <- sciCAR_293T[,c(1,2,3)]
-  sciCAR_293T$type <- "sci-CAR-seq"
-  sciCAR_293T$assay <- "sci-CAR-seq"
-  sciCAR_293T <- sciCAR_293T[sciCAR_293T$counts >= 800,]
-  sciCAR_293T$x <- 6
-  
-  SNARE_GM <- read.csv("SNARE-GM12878-umi-gene.count.csv", header = TRUE, col.names = c("barcode", "counts", "genes", "identity"))
-  SNARE_GM <- SNARE_GM[,c(1,2,3)]
-  SNARE_GM$type <- "SNARE-seq"
-  SNARE_GM$assay <- "SNARE-seq"
-  SNARE_GM$x <- 7
-  
-  data <- rbind(joint_3t3, joint_3t32, multiome_GM, share_GM2, paired_293T, sciCAR_293T, SNARE_GM)
-  data$type <- factor(data$type, levels = c("JoINT-seq 37", "JoINT-seq 50", "10X multiome", "ISSAAC-seq", "SHARE-seq", "Paired-seq", "sci-CAR-seq", "SNARE-seq"))
-  data$assay <- factor(data$assay, levels = c("JoINT-seq", "10X multiome", "SHARE-seq", "Paired-seq", "sci-CAR-seq", "SNARE-seq"))
-  data$y <- log10(data$counts)
-  
-  data$type <- factor(data$type, levels = c("JoINT-seq 37", "JoINT-seq 50", "10X multiome", "ISSAAC-seq", "SHARE-seq", "Paired-seq", "sci-CAR-seq", "SNARE-seq"))
-  data$assay <- factor(data$assay, levels = c("JoINT-seq", "10X multiome", "SHARE-seq", "Paired-seq", "sci-CAR-seq", "SNARE-seq"))
-  
-  write_tsv(data, "source_fig_1d.tsv")
+  data <- read_tsv("source_fig_1d.tsv")
   
   ggplot(data = data, aes(x = x, y = y)) +
     theme_classic() +
@@ -235,44 +109,37 @@ RNA
     xlab("") +
     ylab(expression(log[10]~(umis~per~cell))) +
     ylim(2, 5.45) +
-    annotate(geom = "text", x = 1, y = 5.4, colour = "red", size = 3.5, angle = 30, label = round(median(joint_3t3$counts))) +
-    annotate(geom = "text", x = 2, y = 5.4, colour = "red", size = 3.5, angle = 30, label = round(median(joint_3t32$counts))) +
-    annotate(geom = "text", x = 3, y = 5.4, colour = "black", size = 3.5, angle = 30, label = round(median(multiome_GM$counts))) +
-    annotate(geom = "text", x = 4, y = 5.4, colour = "black", size = 3.5, angle = 30, label = round(median(share_GM2$counts))) +
-    annotate(geom = "text", x = 5, y = 5.4, colour = "black", size = 3.5, angle = 30, label = round(median(paired_293T$counts))) +
-    annotate(geom = "text", x = 6, y = 5.4, colour = "black", size = 3.5, angle = 30, label = round(median(sciCAR_293T$counts))) +
-    annotate(geom = "text", x = 7, y = 5.4, colour = "black", size = 3.5, angle = 30, label = round(median(SNARE_GM$counts)))
+    annotate(geom = "text", x = 1, y = 5.4, colour = "red", size = 3.5, angle = 30, label = round(median(data[data$type == "JoINT-seq 37",]$counts))) +
+    annotate(geom = "text", x = 2, y = 5.4, colour = "red", size = 3.5, angle = 30, label = round(median(data[data$type == "JoINT-seq 50",]$counts))) +
+    annotate(geom = "text", x = 3, y = 5.4, colour = "black", size = 3.5, angle = 30, label = round(median(data[data$type == "10X multiome",]$counts))) +
+    annotate(geom = "text", x = 4, y = 5.4, colour = "black", size = 3.5, angle = 30, label = round(median(data[data$type == "SHARE-seq",]$counts))) +
+    annotate(geom = "text", x = 5, y = 5.4, colour = "black", size = 3.5, angle = 30, label = round(median(data[data$type == "Paired-seq",]$counts))) +
+    annotate(geom = "text", x = 6, y = 5.4, colour = "black", size = 3.5, angle = 30, label = round(median(data[data$type == "sci-CAR-seq",]$counts))) +
+    annotate(geom = "text", x = 7, y = 5.4, colour = "black", size = 3.5, angle = 30, label = round(median(data[data$type == "SNARE-seq",]$counts)))
+
 ```
 
 
 ### TCR/BCR coverage
 ```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=3, fig.width=4}
 
-pdata_tra <- read_delim('GJx-rC1_alignments_TRA_noumi_coverage_inner.tsv')
-pdata_trb <- read_delim('GJx-rC1_alignments_TRB_noumi_coverage_inner.tsv')
-pdata_igh <- read_delim('GJx-B1_alignments_IGH_noumi_coverage_inner.tsv')
-pdata_igl <- read_delim('GJx-B1_alignments_IGL_noumi_coverage_inner.tsv')
-
-pdata <-bind_rows(pdata_tra, pdata_trb, pdata_igh, pdata_igl) %>% 
-  dplyr::mutate_at(vars(group), ~factor(.x, levels = c('FR1', 'CDR1', 'FR2', 'CDR2', 'FR3', 'CDR3', 'FR4'))) %>% 
-  dplyr::mutate_at(vars(chain), ~factor(.x, levels = c('TRA', 'TRB', 'IGH', 'IGL'))) %>% 
-  arrange(percentile)
-
-ggplot() +
-  geom_line(data = pdata_tra, aes(color = group, x = percentile, y = y), linewidth = 0.8, lineend = "round") +
-  geom_line(data = pdata_trb, aes(color = group, x = percentile, y = y), linewidth = 0.8, lineend = "round") +
-  geom_line(data = pdata_igh, aes(color = group, x = percentile, y = y), linewidth = 0.8, lineend = "round") +
-  geom_line(data = pdata_igl, aes(color = group, x = percentile, y = y), linewidth = 0.8, lineend = "round") +
-  ylim(c(0, 7)) +
-  theme_bw() +
-  scale_color_manual(values = imgt_colors) +
-  ylab('log10(reads)') +
-  xlab('Position percentile (%)') +
-  theme(panel.grid = element_blank(),
-        axis.text.x = element_text(size = 10, color = "black"),
-        axis.text.y = element_text(size = 10, color = "black"),
-        axis.title.x = element_text(size = 13),
-        axis.title.y = element_text(size = 13))
+  data <- read_tsv("source_fig_1e.tsv")
+  
+  ggplot() +
+    geom_line(data = data %>% dplyr::filter(chain == "TRA"), aes(color = group, x = percentile, y = y), linewidth = 0.8, lineend = "round") +
+    geom_line(data = data %>% dplyr::filter(chain == "TRB"), aes(color = group, x = percentile, y = y), linewidth = 0.8, lineend = "round") +
+    geom_line(data = data %>% dplyr::filter(chain == "IGH"), aes(color = group, x = percentile, y = y), linewidth = 0.8, lineend = "round") +
+    geom_line(data = data %>% dplyr::filter(chain == "IGL"), aes(color = group, x = percentile, y = y), linewidth = 0.8, lineend = "round") +
+    ylim(c(0, 7)) +
+    theme_bw() +
+    scale_color_manual(values = imgt_colors) +
+    ylab('log10(reads)') +
+    xlab('Position percentile (%)') +
+    theme(panel.grid = element_blank(),
+          axis.text.x = element_text(size = 10, color = "black"),
+          axis.text.y = element_text(size = 10, color = "black"),
+          axis.title.x = element_text(size = 13),
+          axis.title.y = element_text(size = 13))
 
 ```
 
@@ -317,7 +184,7 @@ ggplot(meta, aes(x = sample)) +
 
 ### Compare gene expression with 10X
 ```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=4, fig.width=6}
-  meta_RNA <- read_tsv('compare_10X_TAI_RNA.tsv') %>% 
+  meta_RNA <- read_tsv('source_fig_1h.tsv') %>% 
     dplyr::mutate(sample = paste0(patient, "_", tech))
   
   ggplot(meta_RNA, aes(x = sample, y = log10(nFeature_RNA), fill = patient)) +
@@ -337,109 +204,31 @@ ggplot(meta, aes(x = sample)) +
 ### PBMC clustering
 ```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=6, fig.width=6}
 
-seu <- readRDS("TAI_4sample_masked.rds")
-
-CellDimPlot(seu, group_by = "minor_celltype", reduction = "UMAP_LSI_Combined", palcolor = color_celltype_minor, pt_size = 0.05)
-
-```
 
 
 
-### TCR projection
-```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=6, fig.width=6}
-
-data <- read_excel("TAI_4sample_TCR_inT.xlsx") %>% 
-  group_by(CDRa_CDRb, barcode) %>% 
-  distinct(CDRa_CDRb, barcode, .keep_all = TRUE) %>% 
-  dplyr::filter(!is.na(chainA) & !is.na(chainB)) %>% 
-  ungroup()
-
-seu$cell_module <- seu$major_celltype
-data_sum <- data %>% left_join(seu@meta.data[,c("cellnames", "cell_module")], by = join_by("barcode" == "cellnames")) %>% 
-  dplyr::filter(!is.na(cell_module)) %>% 
-  group_by(CDRa_CDRb, cell_module) %>% 
-  dplyr::mutate(n = n()) %>% 
-  ungroup() %>% 
-  arrange(desc(n)) %>% 
-  dplyr::select(barcode, n) %>% 
-  group_by(barcode) %>% 
-  slice_head(n = 1)
-
-dft <- seu@meta.data %>% left_join(data_sum, by = join_by(cellnames == barcode))
-seu$n_clonotype <- dft$n
-
-
-data <- data.frame(seu@reductions$UMAP_LSI_Combined@cell.embeddings) 
-data$barcode <- rownames(data)
-data <- cbind(data, seu@meta.data)
-data_tcr <- data %>% dplyr::filter(!is.na(n_clonotype)) %>% 
-  dplyr::filter(!str_detect(cell_module, "B")) %>% 
-  dplyr::filter(!str_detect(cell_module, "Mono")) %>% 
-  dplyr::filter(!str_detect(cell_module, "DC")) %>% 
-  dplyr::filter(!str_detect(cell_module, "HSC"))
-
-xrange <- max(data$UMAPLSICombined_1) - min(data$UMAPLSICombined_1)
-yrange <- max(data$UMAPLSICombined_2) - min(data$UMAPLSICombined_2)
-ggplot(data) +
-  geom_scattermore(aes(x = UMAPLSICombined_1, y = UMAPLSICombined_2), color = "grey90", show.legend = FALSE) +
-  theme_void() +
-  coord_fixed(xrange/yrange) +
-  geom_point(data = data_tcr, aes(x = UMAPLSICombined_1, y = UMAPLSICombined_2, size = n_clonotype, color = minor_celltype), alpha = 1, show.legend = FALSE) +
-  scale_size_continuous(range = c(0.1, 4), breaks = c(1, 5, 10)) +
-  scale_color_manual(values = color_celltype_minor)
-
-
-
-
+data <- read_tsv('source_fig_1i.tsv')
+ggplot(data, aes(x = UMAP_1, y = UMAP_2, color = minor_celltype))  +
+  geom_point(size = 0.1) +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+      axis.text.x = element_text(size = 8, color = "black"),
+      axis.text.y = element_text(size = 8, color = "black"),
+      axis.title.x = element_text(size = 13),
+      axis.title.y = element_text(size = 13)) +
+  scale_color_manual(values = color_celltype_minor) +
+  guides(color = guide_legend(override.aes = list(size = 3))) +
+  coord_fixed((max(data$UMAP_1) - min(data$UMAP_1)) / (max(data$UMAP_2) - min(data$UMAP_2)))
 
 
 ```
-
 
 
 ### MAIT cells
 ```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=8}
-data <- readxl::read_excel("TAI_4sample_TCR_inT.xlsx") %>% 
-  group_by(CDRa_CDRb, barcode) %>% 
-  distinct(CDRa_CDRb, barcode, .keep_all = TRUE) %>% 
-  dplyr::filter(!is.na(chainA) & !is.na(chainB)) %>% 
-  ungroup() %>% 
-  dplyr::mutate(TRAV = str_extract(chainA, "(.*)\\+(.*)\\+(.*)", group = 1),
-                TRAJ = str_extract(chainA, "(.*)\\+(.*)\\+(.*)", group = 2),
-                CDR3a = str_extract(chainA, "(.*)\\+(.*)\\+(.*)", group = 3),
-                TRBV = str_extract(chainB, "(.*)\\+(.*)\\+(.*)", group = 1),
-                TRBJ = str_extract(chainB, "(.*)\\+(.*)\\+(.*)", group = 2),
-                CDR3b = str_extract(chainB, "(.*)\\+(.*)\\+(.*)", group = 3),
-                comb_a = paste0(TRAV, "_", TRAJ),
-                comb_b = paste0(TRBV, "_", TRBJ))
 
-
-
-seu$cell_module <- seu$major_celltype
-data_sum <- data %>% left_join(seu@meta.data[,c("cellnames", "cell_module")], by = join_by("barcode" == "cellnames")) %>% 
-  dplyr::filter(!is.na(cell_module)) %>% 
-  dplyr::mutate(MAIT = if_else(cell_module == "MAIT", "MAIT", "others")) %>% 
-  group_by(comb_a, MAIT) %>% 
-  dplyr::summarise(count_comb_a = n()) %>% 
-  arrange(desc(count_comb_a)) %>% 
-  group_by(MAIT) %>% 
-  dplyr::mutate(prop_comb_a = count_comb_a/sum(count_comb_a)) %>% 
-  ungroup() %>% 
-  arrange(desc(prop_comb_a))
-comb_a_plot <- data_sum %>% slice_head(n = 40) %>% pull("comb_a") %>% unique()
-data_sum <- data_sum %>% dplyr::filter(comb_a %in% comb_a_plot) %>% 
-  dplyr::mutate_at(vars(comb_a), ~factor(., levels = unique(comb_a)))
-data_sum2 <- full_join(dplyr::filter(data_sum, MAIT == "MAIT"), dplyr::filter(data_sum, MAIT != "MAIT"), by = "comb_a")
-df1 <- data_sum2 %>% dplyr::select(comb_a, ends_with("x")) %>% 
-  rename_with(~c("comb_a", "MAIT", "count_comb_a", "prop_comb_a")) %>% 
-  dplyr::mutate(MAIT = "MAIT")
-df2 <- data_sum2 %>% dplyr::select(comb_a, ends_with("y")) %>% 
-  rename_with(~c("comb_a", "MAIT", "count_comb_a", "prop_comb_a")) %>% 
-  dplyr::mutate(MAIT = "others") %>% 
-  dplyr::mutate(prop_comb_a = -prop_comb_a)
-data_sum2 <- bind_rows(df1, df2) %>% 
-  replace(is.na(.), 0) 
-ggplot(data_sum2, aes(x = comb_a, y = prop_comb_a, fill = MAIT)) +
+data <- read_tsv('source_fig_1k.tsv')
+ggplot(data, aes(x = comb_a, y = prop_comb_a, fill = MAIT)) +
   theme_classic() +
   geom_col() +
   theme(axis.text.x = element_text(angle = 45, size = 5, hjust = 1, color = "black"),
@@ -449,44 +238,42 @@ ggplot(data_sum2, aes(x = comb_a, y = prop_comb_a, fill = MAIT)) +
         plot.margin = margin(t = 5, l = 40)) +
   ylim(-0.1, 0.45) +
   scale_fill_manual(values = c("#DF4A4A", "#5668C3"))
-
-  
-
-  
   
 ```
 
 ### Compare TAI with 10X
 ```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=4, fig.width=4}
 
-pdata <- read_tsv('TCR_TAI_10X_4sample.tsv')
-for(pat in c("D1")){
-  ppdata <- pdata %>% dplyr::filter(sample == pat)
-  sp <- cor(ppdata$prop_10X, ppdata$prop_TAI, method = "spearman")
-  p <- ggplot(ppdata, aes(x = prop_10X, y = prop_TAI)) +
-    # scale_x_log10() +
-    # scale_y_log10() +
-    geom_point(aes(fill = CDRa_CDRb), show.legend = FALSE, size = 5, alpha = 0.7, shape = 21, color = "black") +
-    geom_line(stat="smooth", method = "lm", formula = y ~ x,
-              size = 1, linetype ="dashed", alpha = 0.5, color = "blue") +
-    theme_classic() +
-    ylab("TAI") +
-    xlab("10X") +
-    theme(axis.text.x = element_text(angle = 0, hjust = 1, size = 10, color = c("black", "black")),
-          axis.text.y = element_text(size = 10, color = "black"),
-          axis.title.x = element_text(size = 13),
-          axis.title.y = element_text(size = 13),
-          legend.text = element_text(size = 10)) +
-    scale_fill_manual(values = choose_colorset("bubble", nrow(ppdata))) +
-    ggtitle(paste0(pat, "_", sp))
-  print(p)
+
+  pdata <- read_tsv('source_fig_1l.tsv')
+  
+  for(pat in c("D1")){
+    ppdata <- pdata %>% dplyr::filter(sample == pat)
+    sp <- cor(ppdata$prop_10X, ppdata$prop_TAI, method = "spearman")
+    p <- ggplot(ppdata, aes(x = prop_10X, y = prop_TAI)) +
+      # scale_x_log10() +
+      # scale_y_log10() +
+      geom_point(aes(fill = CDRa_CDRb), show.legend = FALSE, size = 5, alpha = 0.7, shape = 21, color = "black") +
+      geom_line(stat="smooth", method = "lm", formula = y ~ x,
+                size = 1, linetype ="dashed", alpha = 0.5, color = "blue") +
+      theme_classic() +
+      ylab("TAI") +
+      xlab("10X") +
+      theme(axis.text.x = element_text(angle = 0, hjust = 1, size = 10, color = c("black", "black")),
+            axis.text.y = element_text(size = 10, color = "black"),
+            axis.title.x = element_text(size = 13),
+            axis.title.y = element_text(size = 13),
+            legend.text = element_text(size = 10)) +
+      scale_fill_manual(values = choose_colorset("bubble", nrow(ppdata))) +
+      ggtitle(paste0(pat, "_", sp))
+    print(p)
 }
 
 ```
 
 ### Clonotype TF enrichment
 ```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=10, fig.width=10}
-pdata <- read_tsv('source_fig_1K.tsv')
+pdata <- read_tsv('source_fig_1m.tsv')
 pos <- position_jitter(width = 0.4, height = 0, seed = 18)
 pdata <- pdata %>% dplyr::filter(p < 0.05) %>% 
   dplyr::mutate(fill = case_when(mean_diff < -0.1 ~ -0.1, mean_diff > 0.1 ~ 0.1, .default = mean_diff))

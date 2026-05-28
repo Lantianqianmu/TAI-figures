@@ -1,42 +1,32 @@
 ---
 title: "Figure S9"
-author: "Runze Xie @ institute of biophysics, 11/07/2025"
+author: "Runze Xie @ institute of biophysics, 28/05/2026"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_knit$set(root.dir = "/home/zeemeeuw/data/TAI-Rmd/V1_data")
+knitr::opts_knit$set(root.dir = '/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
 ```
 
 ### Loading packages
 ```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE}
 library(ggplot2)
-library(patchwork)
 library(dplyr)
 library(tidyr)
 library(tibble)
 library(readr)
 library(ArchR)
-library(Seurat)
-library(scplotter)
 library(openxlsx)
 library(readxl)
-source("/home/zeemeeuw/data/TAI-Rmd/V1_code/utils.R")
-setwd('/home/zeemeeuw/data/TAI-Rmd/V1_data')
+source("/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_code/utils.R")
+setwd('/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
 ```
 
 ### Read Seurat and ArchR object for plotting. 
 #### Critical: change the directory to your working dir accordingly!
 ```{r include = TRUE}
-RDSdir <- "/home/zeemeeuw/data/mmJoint/RNA/data/lm_ym/" # output RDS file dir
-ATACdir <- "/home/zeemeeuw/data/mmJoint/ATAC/overlapped_harmony/" # ATAC root dir
-weightList <- list(paste0(ATACdir, "ImputeWeights/Impute-Weights-Rep-1"),
-                   paste0(ATACdir, "ImputeWeights/Impute-Weights-Rep-2"))
-
-seu <- readRDS(paste0(RDSdir, "lm_merged_overlapped_harmony.rds"))
+ATACdir <- "/media/zeemeeuw/TAI-seq/mmTAI/ATAC/overlapped_harmony/" # ATAC root dir
 proj <- loadArchRProject(ATACdir)
-
-
 ```
 
 ### Set parameters for plotting
@@ -57,8 +47,6 @@ mmjoint_colors <- c("Quiescent" = "#bbdefb",
                     "Memory_3" = "#e53a46")
 time_colors <-  c("WT" = "#ABD8E6", "d3" = "#35a153", "d5" = "#1f6933", "d8" = "#f26a11", "d14" = "#B22222" , "d30" = "#B17BA6", "R5" = "#85B0FF", "Y5" = "#3648A2")
 tissue_colors <-  c("Spleen" = "#36A23D", "Ln" = "#2884E7", "Liver" = "#817ab9", "Blood" = "#EE3B00")
-
-
 
 ```
 
@@ -95,221 +83,6 @@ p <- plotTrajectory(proj, embedding = "UMAP_Combined_batch3.3", colorBy = "cellC
 p[[1]]
 p <- plotTrajectory(proj, embedding = "UMAP_Combined_batch3.3", colorBy = "cellColData", trajectory = "Liver.trajectory", name = "Liver.trajectory")
 p[[1]]
-```
-
-
-### Pseudotime heatmap, RNA+ATAC
-```{r eval=FALSE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=6}
-traj_pri_gsc  <- getTrajectory(ArchRProj = proj, name = "all.pri.trajectory", useMatrix = "GeneScoreMatrix", log2Norm = TRUE)
-plotTrajectoryHeatmap(traj_pri_gsc, pal = paletteContinuous(set = "whiteBlue"))
-traj_pri_gex  <- getTrajectory(ArchRProj = proj, name = "all.pri.trajectory", useMatrix = "GeneExpressionMatrix", log2Norm = TRUE)
-plotTrajectoryHeatmap(traj_pri_gex, pal = paletteContinuous(set = "blueYellow"))
-
-```
-
-### Pseudotime heatmap, TFs
-```{r eval=FALSE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=10}
-
-traj_pri_gex  <- getTrajectory(ArchRProj = proj, name = "all.pri.trajectory", useMatrix = "GeneExpressionMatrix", log2Norm = TRUE)
-traj_pri_tf  <- getTrajectory(ArchRProj = proj, name = "all.pri.trajectory", useMatrix = "MotifMatrix", log2Norm = TRUE)
-cor_gex_tf <- correlateTrajectories(traj_pri_gex, traj_pri_tf)
-idxToRemove <- grep(pattern = "deviations", x = cor_gex_tf[["correlatedMappings"]]$name2)
-if(length(idxToRemove > 1)){
-  cor_gex_tf[["correlatedMappings"]] <- cor_gex_tf[["correlatedMappings"]][-idxToRemove,]
-}
-traj_pri_gex2 <- traj_pri_gex[cor_gex_tf[["correlatedMappings"]]$name1, ]
-traj_pri_tf2 <- traj_pri_tf[cor_gex_tf[["correlatedMappings"]]$name2, ]
-
-trajCombined <- traj_pri_gex2
-assay(trajCombined, withDimnames = FALSE) <- t(apply(assay(traj_pri_gex2), 1, scale)) + t(apply(assay(traj_pri_tf2), 1, scale))
-
-combinedMat <- plotTrajectoryHeatmap(trajCombined, returnMat = TRUE, varCutOff = 0)
-rowOrder <- match(rownames(combinedMat), rownames(traj_pri_gex2))
-
-ht1 <- plotTrajectoryHeatmap(traj_pri_gex2,  pal = paletteContinuous(set = "blueYellow"),  varCutOff = 0, rowOrder = rowOrder)
-ht2 <- plotTrajectoryHeatmap(traj_pri_tf2, pal = paletteContinuous(set = "solarExtra"), varCutOff = 0, rowOrder = rowOrder)
-ComplexHeatmap::draw(ht1 + ht2)
-
-```
-
-
-### Pseudotime heatmap, RNA+ATAC, Ln
-```{r eval=FALSE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=6}
-traj_pri_gsc  <- getTrajectory(ArchRProj = proj, name = "Ln.trajectory", useMatrix = "GeneScoreMatrix", log2Norm = TRUE)
-plotTrajectoryHeatmap(traj_pri_gsc, pal = paletteContinuous(set = "whiteBlue"))
-traj_pri_gex  <- getTrajectory(ArchRProj = proj, name = "Ln.trajectory", useMatrix = "GeneExpressionMatrix", log2Norm = TRUE)
-plotTrajectoryHeatmap(traj_pri_gex, pal = paletteContinuous(set = "blueYellow"))
-
-```
-
-### Pseudotime heatmap, TFs, Ln
-```{r eval=FALSE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=10}
-
-traj_pri_gex  <- getTrajectory(ArchRProj = proj, name = "Ln.trajectory", useMatrix = "GeneExpressionMatrix", log2Norm = TRUE)
-traj_pri_tf  <- getTrajectory(ArchRProj = proj, name = "Ln.trajectory", useMatrix = "MotifMatrix", log2Norm = TRUE)
-cor_gex_tf <- correlateTrajectories(traj_pri_gex, traj_pri_tf)
-idxToRemove <- grep(pattern = "deviations", x = cor_gex_tf[["correlatedMappings"]]$name2)
-if(length(idxToRemove > 1)){
-  cor_gex_tf[["correlatedMappings"]] <- cor_gex_tf[["correlatedMappings"]][-idxToRemove,]
-}
-traj_pri_gex2 <- traj_pri_gex[cor_gex_tf[["correlatedMappings"]]$name1, ]
-traj_pri_tf2 <- traj_pri_tf[cor_gex_tf[["correlatedMappings"]]$name2, ]
-
-trajCombined <- traj_pri_gex2
-assay(trajCombined, withDimnames = FALSE) <- t(apply(assay(traj_pri_gex2), 1, scale)) + t(apply(assay(traj_pri_tf2), 1, scale))
-
-combinedMat <- plotTrajectoryHeatmap(trajCombined, returnMat = TRUE, varCutOff = 0)
-rowOrder <- match(rownames(combinedMat), rownames(traj_pri_gex2))
-
-ht1 <- plotTrajectoryHeatmap(traj_pri_gex2,  pal = paletteContinuous(set = "blueYellow"),  varCutOff = 0, rowOrder = rowOrder)
-ht2 <- plotTrajectoryHeatmap(traj_pri_tf2, pal = paletteContinuous(set = "solarExtra"), varCutOff = 0, rowOrder = rowOrder)
-ComplexHeatmap::draw(ht1 + ht2)
-
-```
-
-### Pseudotime heatmap, RNA+ATAC, Spleen
-```{r eval=FALSE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=6}
-traj_pri_gsc  <- getTrajectory(ArchRProj = proj, name = "Spleen.trajectory", useMatrix = "GeneScoreMatrix", log2Norm = TRUE)
-plotTrajectoryHeatmap(traj_pri_gsc, pal = paletteContinuous(set = "whiteBlue"))
-traj_pri_gex  <- getTrajectory(ArchRProj = proj, name = "Spleen.trajectory", useMatrix = "GeneExpressionMatrix", log2Norm = TRUE)
-plotTrajectoryHeatmap(traj_pri_gex, pal = paletteContinuous(set = "blueYellow"))
-
-```
-
-### Pseudotime heatmap, TFs, Spleen
-```{r eval=FALSE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=10}
-
-traj_pri_gex  <- getTrajectory(ArchRProj = proj, name = "Spleen.trajectory", useMatrix = "GeneExpressionMatrix", log2Norm = TRUE)
-traj_pri_tf  <- getTrajectory(ArchRProj = proj, name = "Spleen.trajectory", useMatrix = "MotifMatrix", log2Norm = TRUE)
-cor_gex_tf <- correlateTrajectories(traj_pri_gex, traj_pri_tf)
-idxToRemove <- grep(pattern = "deviations", x = cor_gex_tf[["correlatedMappings"]]$name2)
-if(length(idxToRemove > 1)){
-  cor_gex_tf[["correlatedMappings"]] <- cor_gex_tf[["correlatedMappings"]][-idxToRemove,]
-}
-traj_pri_gex2 <- traj_pri_gex[cor_gex_tf[["correlatedMappings"]]$name1, ]
-traj_pri_tf2 <- traj_pri_tf[cor_gex_tf[["correlatedMappings"]]$name2, ]
-
-trajCombined <- traj_pri_gex2
-assay(trajCombined, withDimnames = FALSE) <- t(apply(assay(traj_pri_gex2), 1, scale)) + t(apply(assay(traj_pri_tf2), 1, scale))
-
-combinedMat <- plotTrajectoryHeatmap(trajCombined, returnMat = TRUE, varCutOff = 0)
-rowOrder <- match(rownames(combinedMat), rownames(traj_pri_gex2))
-
-ht1 <- plotTrajectoryHeatmap(traj_pri_gex2,  pal = paletteContinuous(set = "blueYellow"),  varCutOff = 0, rowOrder = rowOrder)
-ht2 <- plotTrajectoryHeatmap(traj_pri_tf2, pal = paletteContinuous(set = "solarExtra"), varCutOff = 0, rowOrder = rowOrder)
-ComplexHeatmap::draw(ht1 + ht2)
-
-```
-
-### Pseudotime heatmap, RNA+ATAC, Blood
-```{r eval=FALSE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=6}
-traj_pri_gsc  <- getTrajectory(ArchRProj = proj, name = "Blood.trajectory", useMatrix = "GeneScoreMatrix", log2Norm = TRUE)
-plotTrajectoryHeatmap(traj_pri_gsc, pal = paletteContinuous(set = "whiteBlue"))
-traj_pri_gex  <- getTrajectory(ArchRProj = proj, name = "Blood.trajectory", useMatrix = "GeneExpressionMatrix", log2Norm = TRUE)
-plotTrajectoryHeatmap(traj_pri_gex, pal = paletteContinuous(set = "blueYellow"))
-
-```
-
-### Pseudotime heatmap, TFs, Blood
-```{r eval=FALSE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=10}
-
-traj_pri_gex  <- getTrajectory(ArchRProj = proj, name = "Blood.trajectory", useMatrix = "GeneExpressionMatrix", log2Norm = TRUE)
-traj_pri_tf  <- getTrajectory(ArchRProj = proj, name = "Blood.trajectory", useMatrix = "MotifMatrix", log2Norm = TRUE)
-cor_gex_tf <- correlateTrajectories(traj_pri_gex, traj_pri_tf)
-idxToRemove <- grep(pattern = "deviations", x = cor_gex_tf[["correlatedMappings"]]$name2)
-if(length(idxToRemove > 1)){
-  cor_gex_tf[["correlatedMappings"]] <- cor_gex_tf[["correlatedMappings"]][-idxToRemove,]
-}
-traj_pri_gex2 <- traj_pri_gex[cor_gex_tf[["correlatedMappings"]]$name1, ]
-traj_pri_tf2 <- traj_pri_tf[cor_gex_tf[["correlatedMappings"]]$name2, ]
-
-trajCombined <- traj_pri_gex2
-assay(trajCombined, withDimnames = FALSE) <- t(apply(assay(traj_pri_gex2), 1, scale)) + t(apply(assay(traj_pri_tf2), 1, scale))
-
-combinedMat <- plotTrajectoryHeatmap(trajCombined, returnMat = TRUE, varCutOff = 0)
-rowOrder <- match(rownames(combinedMat), rownames(traj_pri_gex2))
-
-ht1 <- plotTrajectoryHeatmap(traj_pri_gex2,  pal = paletteContinuous(set = "blueYellow"),  varCutOff = 0, rowOrder = rowOrder)
-ht2 <- plotTrajectoryHeatmap(traj_pri_tf2, pal = paletteContinuous(set = "solarExtra"), varCutOff = 0, rowOrder = rowOrder)
-ComplexHeatmap::draw(ht1 + ht2)
-
-```
-
-
-### Pseudotime heatmap, RNA+ATAC, Liver
-```{r eval=FALSE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=6}
-traj_pri_gsc  <- getTrajectory(ArchRProj = proj, name = "Liver.trajectory", useMatrix = "GeneScoreMatrix", log2Norm = TRUE)
-plotTrajectoryHeatmap(traj_pri_gsc, pal = paletteContinuous(set = "whiteBlue"))
-traj_pri_gex  <- getTrajectory(ArchRProj = proj, name = "Liver.trajectory", useMatrix = "GeneExpressionMatrix", log2Norm = TRUE)
-plotTrajectoryHeatmap(traj_pri_gex, pal = paletteContinuous(set = "blueYellow"))
-
-```
-
-### Pseudotime heatmap, TFs, Liver
-```{r eval=FALSE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=10}
-
-traj_pri_gex  <- getTrajectory(ArchRProj = proj, name = "Liver.trajectory", useMatrix = "GeneExpressionMatrix", log2Norm = TRUE)
-traj_pri_tf  <- getTrajectory(ArchRProj = proj, name = "Liver.trajectory", useMatrix = "MotifMatrix", log2Norm = TRUE)
-cor_gex_tf <- correlateTrajectories(traj_pri_gex, traj_pri_tf)
-idxToRemove <- grep(pattern = "deviations", x = cor_gex_tf[["correlatedMappings"]]$name2)
-if(length(idxToRemove > 1)){
-  cor_gex_tf[["correlatedMappings"]] <- cor_gex_tf[["correlatedMappings"]][-idxToRemove,]
-}
-traj_pri_gex2 <- traj_pri_gex[cor_gex_tf[["correlatedMappings"]]$name1, ]
-traj_pri_tf2 <- traj_pri_tf[cor_gex_tf[["correlatedMappings"]]$name2, ]
-
-trajCombined <- traj_pri_gex2
-assay(trajCombined, withDimnames = FALSE) <- t(apply(assay(traj_pri_gex2), 1, scale)) + t(apply(assay(traj_pri_tf2), 1, scale))
-
-combinedMat <- plotTrajectoryHeatmap(trajCombined, returnMat = TRUE, varCutOff = 0)
-rowOrder <- match(rownames(combinedMat), rownames(traj_pri_gex2))
-
-ht1 <- plotTrajectoryHeatmap(traj_pri_gex2,  pal = paletteContinuous(set = "blueYellow"),  varCutOff = 0, rowOrder = rowOrder)
-ht2 <- plotTrajectoryHeatmap(traj_pri_tf2, pal = paletteContinuous(set = "solarExtra"), varCutOff = 0, rowOrder = rowOrder)
-ComplexHeatmap::draw(ht1 + ht2)
-
-```
-
-### Supervised trajectory, recall
-```{r eval=FALSE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=5}
-p <- plotTrajectory(proj, embedding = "UMAP_Combined_batch3.3", colorBy = "cellColData", trajectory = "all.re.trajectory", name = "all.re.trajectory")
-p[[1]]
-
-```
-
-
-### Pseudotime heatmap, RNA+ATAC, recall
-```{r eval=FALSE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=6}
-traj_pri_gsc  <- getTrajectory(ArchRProj = proj, name = "all.re.trajectory", useMatrix = "GeneScoreMatrix", log2Norm = TRUE)
-plotTrajectoryHeatmap(traj_pri_gsc, pal = paletteContinuous(set = "whiteBlue"))
-traj_pri_gex  <- getTrajectory(ArchRProj = proj, name = "all.re.trajectory", useMatrix = "GeneExpressionMatrix", log2Norm = TRUE)
-plotTrajectoryHeatmap(traj_pri_gex, pal = paletteContinuous(set = "blueYellow"))
-
-```
-
-### Pseudotime heatmap, TFs, recall
-```{r eval=FALSE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=10}
-
-traj_pri_gex  <- getTrajectory(ArchRProj = proj, name = "all.re.trajectory", useMatrix = "GeneExpressionMatrix", log2Norm = TRUE)
-traj_pri_tf  <- getTrajectory(ArchRProj = proj, name = "all.re.trajectory", useMatrix = "MotifMatrix", log2Norm = TRUE)
-cor_gex_tf <- correlateTrajectories(traj_pri_gex, traj_pri_tf)
-idxToRemove <- grep(pattern = "deviations", x = cor_gex_tf[["correlatedMappings"]]$name2)
-if(length(idxToRemove > 1)){
-  cor_gex_tf[["correlatedMappings"]] <- cor_gex_tf[["correlatedMappings"]][-idxToRemove,]
-}
-traj_pri_gex2 <- traj_pri_gex[cor_gex_tf[["correlatedMappings"]]$name1, ]
-traj_pri_tf2 <- traj_pri_tf[cor_gex_tf[["correlatedMappings"]]$name2, ]
-
-trajCombined <- traj_pri_gex2
-assay(trajCombined, withDimnames = FALSE) <- t(apply(assay(traj_pri_gex2), 1, scale)) + t(apply(assay(traj_pri_tf2), 1, scale))
-
-combinedMat <- plotTrajectoryHeatmap(trajCombined, returnMat = TRUE, varCutOff = 0)
-rowOrder <- match(rownames(combinedMat), rownames(traj_pri_gex2))
-
-ht1 <- plotTrajectoryHeatmap(traj_pri_gex2,  pal = paletteContinuous(set = "blueYellow"),  varCutOff = 0, rowOrder = rowOrder)
-ht2 <- plotTrajectoryHeatmap(traj_pri_tf2, pal = paletteContinuous(set = "solarExtra"), varCutOff = 0, rowOrder = rowOrder)
-ComplexHeatmap::draw(ht1 + ht2)
-
 ```
 
   

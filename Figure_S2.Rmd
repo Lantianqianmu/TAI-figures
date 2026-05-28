@@ -1,11 +1,11 @@
 ---
 title: "Figure S2"
-author: "Runze Xie @ institute of biophysics, 11/07/2025"
+author: "Runze Xie @ institute of biophysics, 28/05/2026"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_knit$set(root.dir = "/home/zeemeeuw/data/TAI-Rmd/V1_data")
+knitr::opts_knit$set(root.dir = '/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
 ```
 
 ### Loading packages
@@ -13,18 +13,10 @@ knitr::opts_knit$set(root.dir = "/home/zeemeeuw/data/TAI-Rmd/V1_data")
 library(ggplot2)
 library(dplyr)
 library(tibble)
-library(scattermore)
 library(readr)
-library(Seurat)
-library(ArchR)
-library(scplotter)
-library(openxlsx)
-library(readxl)
 library(patchwork)
-library(scCustomize)
-library(VennDiagram)
-source("/home/zeemeeuw/data/TAI-Rmd/V1_code/utils.R")
-setwd('/home/zeemeeuw/data/TAI-Rmd/V1_data')
+source("/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_code/utils.R")
+setwd('/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
 ```
 
 ### Set parameters for plotting
@@ -32,14 +24,6 @@ setwd('/home/zeemeeuw/data/TAI-Rmd/V1_data')
 GJx_colors <- c("GM12878" = "#3971ff",
                 "Jurkat" = "#ff882e")
 
-```
-### Read Seurat and ArchR object for plotting. 
-#### Critical: change the directory to your working dir accordingly!
-```{r include = TRUE}
-RDSdir <- "/home/zeemeeuw/data/GJx/RNA/" # output RDS file dir
-ATACdir <- "/home/zeemeeuw/data/GJx/ATAC_overlapped/" # ATAC root dir
-seu <- readRDS(paste0(RDSdir, "GJx_overlapped.rds"))
-proj <- loadArchRProject(ATACdir)
 ```
 
 ### QC of 3T3/GM12878 libraries
@@ -184,95 +168,16 @@ ggplot(data = data, aes(x = temp, y = log10(counts))) +
   coord_fixed(1.2)
 
 
-# Venn
-Chevalier1 <- c("#355243", "#fbca50", "#c9d5d4", "#baa28a")
-FantasticFox1 <- c("#d37a20", "#dbcb09", "#3a9cbc", "#dd7208", "#a30019")
-Moonrise3 <- c("#75cbdc", "#f0a4af", "#8a863a", "#c2b479", "#f8d068")
-Cavalcanti1 <- c("#ceab0d", "#083215", "#919562", "#6f997a", "#831e11")
-Darjeeling2 <- c("#e6c09e", "#0d5888", "#cb8b3e", "#9cd6d6", "#000000")
-Darjeeling1 <- c("#fb0007", "#139177", "#ed9e08", "#f56f08", "#4caecc")
-Royal2 <- c("#e4c9b2", "#f1c2a5", "#f49d98", "#fcd68f", "#629076")
-IsleofDogs2 <- c("#e4c9b2", "#998273", "#a6723d", "#2b2523", "#151213")
-
-# 37 temp
-atac_1 <- read.csv("G3-ata_hg38_1_bc_whitelist.txt", header = TRUE, row.names = 1)
-atac_2 <- read.csv("G3-ata_mm10_1_bc_whitelist.txt", header = TRUE, row.names = 1)
-
-rna_1 <- read.csv("G3-rna_hg38_1_bc_whitelist.txt", header = TRUE, row.names = 1)$x
-rna_2 <- read.csv("G3-rna_mm10_1_bc_whitelist.txt", header = TRUE, row.names = 1)$x
-
-rna_1 <- rna_1[grepl("\\-GCA$", rna_1)]
-rna_1 <- substr(rna_1, 1, 23)
-rna_1 <- unique(rna_1)
-
-rna_2 <- rna_2[grepl("\\-GCA$", rna_2)]
-rna_2 <- substr(rna_2, 1, 23)
-rna_2 <- unique(rna_2)
-
-
-veendata <- list("atac" = atac_1$x,
-                 "rna" = rna_1)
-venn.diagram(veendata, filename = "G3-multiome_GM12878_37.png", imagetype = "png",
-             lwd = 0.5, cex = 0.5, cat.cex = 0, width = 2000, height = 2000,
-             col="white", fill = Darjeeling1[c(5, 1)],
-             disable.logging = TRUE, alpha = 0.5,
-             fontfamily = "Arial", cat.fontfamily = "Arial")
-
-veendata <- list("atac" = atac_2$x,
-                 "rna" = rna_2)
-venn.diagram(veendata, filename = "G3-multiome_3T3_37.png", imagetype = "png",
-             ext.text = FALSE, cex = 0.5, cat.cex = 0, width = 2000, height = 2000,
-             col="white", fill = Darjeeling1[c(5, 1)],
-             disable.logging = TRUE, alpha = 0.5,
-             fontfamily = "Arial", cat.fontfamily = "Arial")
-
-# 50 temp
-atac_1 <- read.csv("G3-ata_hg38_2_bc_whitelist.txt", header = TRUE, row.names = 1)
-atac_2 <- read.csv("G3-ata_mm10_2_bc_whitelist.txt", header = TRUE, row.names = 1)
-
-rna_1 <- read.csv("G3-rna_hg38_2_bc_whitelist.txt", header = TRUE, row.names = 1)$x
-rna_2 <- read.csv("G3-rna_mm10_2_bc_whitelist.txt", header = TRUE, row.names = 1)$x
-
-rna_1 <- rna_1[grepl("\\-TCC$", rna_1)]
-rna_1 <- substr(rna_1, 1, 23)
-rna_1 <- unique(rna_1)
-
-rna_2 <- rna_2[grepl("\\-TCC$", rna_2)]
-rna_2 <- substr(rna_2, 1, 23)
-rna_2 <- unique(rna_2)
-
-veendata <- list("atac" = atac_1$x,
-                 "rna" = rna_1)
-venn.diagram(veendata, filename = "G3-multiome_GM12878_50_55_552_24.png", imagetype = "png",
-             ext.text = FALSE, cex = 0.5, cat.cex = 0, width = 2000, height = 2000,
-             col="white", fill = Darjeeling1[c(5, 1)],
-             disable.logging = TRUE, alpha = 0.5,
-             fontfamily = "Arial", cat.fontfamily = "Arial")
-
-veendata <- list("atac" = atac_2$x,
-                 "rna" = rna_2)
-venn.diagram(veendata, filename = "G3-multiome_3T3_50_84_1291_31.png", imagetype = "png",
-             ext.text = FALSE, cex = 0.5, cat.cex = 0, width = 2000, height = 2000,
-             col="white", fill = Darjeeling1[c(5, 1)],
-             disable.logging = TRUE, alpha = 0.5,
-             fontfamily = "Arial", cat.fontfamily = "Arial")
 
 
 
 ```
 
 
-![GM12878_37](G3-multiome_GM12878_37.png){width=30% height=30%}
-![3T3_37](G3-multiome_3T3_37.png){width=30% height=30%}
-![GM12878_50](G3-multiome_GM12878_50_55_552_24.png){width=30% height=30%}
-![3T3_50](G3-multiome_3T3_50_84_1291_31.png){width=30% height=30%}
-
-
-
 ### QC of Jurkat/GM12878 libraries
 ```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=4, fig.width=4}
-meta <- seu@meta.data
-meta$nFrags <- proj@cellColData[colnames(seu),]$nFrags
+meta <- read_tsv('source_fig_S2e.tsv')
+
 p <- ggplot(meta, aes(x = sample)) +
   geom_violin(aes(fill = sample, y = log10(nFeature_RNA)), alpha = 0.5, trim = TRUE, scale = "width") +
   geom_boxplot(aes(fill = sample, y = log10(nFeature_RNA)), alpha = 1, show.legend = FALSE, width = 0.3, outlier.shape = NA) +
@@ -316,18 +221,83 @@ print(p)
 
 ### Violin plot
 ```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=4, fig.width=4}
-Stacked_VlnPlot(seurat_object = seu, features = c("CD3E", "PAX5"), 
-                x_lab_rotate = TRUE, colors_use = GJx_colors, plot_spacing = 0.3,
-                vln_linewidth = 0.5)
+
+data <- read_tsv('source_fig_S2g.tsv')
+
+ggplot(data = data, aes(x = sample, y = PAX5)) +
+  theme_classic() +
+  geom_violin(aes(fill = sample), adjust = 1, width = 0.8, size = 0.5, scale = "width", show.legend = TRUE, trim = TRUE) +
+  scale_fill_manual(values = GJx_colors) +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 13, color = c("black", "black")),
+        axis.text.y = element_text(size = 13, color = "black"),
+        axis.title.x = element_text(size = 15),
+        axis.title.y = element_text(size = 15)) +
+  labs(title = "PAX5") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  ylim(c(0, 4)) +
+  ylab('log10(counts)') +
+  coord_fixed(0.5)
+# ggsave('/media/zeemeeuw/TAI-seq/out/GJx/PAX5.pdf', width = 5, height = 3)
+
+ggplot(data = data, aes(x = sample, y = CD3E)) +
+  theme_classic() +
+  geom_violin(aes(fill = sample), adjust = 1, width = 0.8, size = 0.5, scale = "width", show.legend = TRUE, trim = TRUE) +
+  scale_fill_manual(values = GJx_colors) +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 13, color = c("black", "black")),
+        axis.text.y = element_text(size = 13, color = "black"),
+        axis.title.x = element_text(size = 15),
+        axis.title.y = element_text(size = 15)) +
+  labs(title = "CD3E") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  ylim(c(0, 3)) +
+  ylab('log10(counts)') +
+  coord_fixed(0.5)
+# ggsave('/media/zeemeeuw/TAI-seq/out/GJx/CD3E.pdf', width = 5, height = 3)
+
+
 ```
 
 ### UMAP
 ```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=4, fig.width=4}
-CellDimPlot(seu, reduction = "UMAP_LSI_Combined",  theme = "theme_blank", legend.position = "right", group_by = "cell_module", raster = FALSE, pt_size = 0.5, palcolor = GJx_colors)
+data <- read_tsv('source_fig_S2f.tsv')
 
-CellDimPlot(seu, reduction = "UMAP_LSI_RNA",  theme = "theme_blank", legend.position = "right", group_by = "cell_module", raster = FALSE, pt_size = 0.5, palcolor = GJx_colors)
+ggplot(data, aes(x = UMAPCombined_1, y = UMAPCombined_2, color = sample))  +
+  geom_point(size = 0.1) +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+      axis.text.x = element_text(size = 8, color = "black"),
+      axis.text.y = element_text(size = 8, color = "black"),
+      axis.title.x = element_text(size = 13),
+      axis.title.y = element_text(size = 13)) +
+  scale_color_manual(values = GJx_colors) +
+  guides(color = guide_legend(override.aes = list(size = 3))) +
+  coord_fixed((max(data$UMAPCombined_1) - min(data$UMAPCombined_1)) / (max(data$UMAPCombined_2) - min(data$UMAPCombined_2)))
 
-CellDimPlot(seu, reduction = "UMAP_LSI_ATAC",  theme = "theme_blank", legend.position = "right", group_by = "cell_module", raster = FALSE, pt_size = 0.5, palcolor = GJx_colors)
+ggplot(data, aes(x = UMAPLSIATAC_1, y = UMAPLSIATAC_2, color = sample))  +
+  geom_point(size = 0.1) +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+      axis.text.x = element_text(size = 8, color = "black"),
+      axis.text.y = element_text(size = 8, color = "black"),
+      axis.title.x = element_text(size = 13),
+      axis.title.y = element_text(size = 13)) +
+  scale_color_manual(values = GJx_colors) +
+  guides(color = guide_legend(override.aes = list(size = 3))) +
+  coord_fixed((max(data$UMAPLSIATAC_1) - min(data$UMAPLSIATAC_1)) / (max(data$UMAPLSIATAC_2) - min(data$UMAPLSIATAC_2)))
+
+ggplot(data, aes(x = UMAPLSIRNA_1, y = UMAPLSIRNA_2, color = sample))  +
+  geom_point(size = 0.1) +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+      axis.text.x = element_text(size = 8, color = "black"),
+      axis.text.y = element_text(size = 8, color = "black"),
+      axis.title.x = element_text(size = 13),
+      axis.title.y = element_text(size = 13)) +
+  scale_color_manual(values = GJx_colors) +
+  guides(color = guide_legend(override.aes = list(size = 3))) +
+  coord_fixed((max(data$UMAPLSIRNA_1) - min(data$UMAPLSIRNA_1)) / (max(data$UMAPLSIRNA_2) - min(data$UMAPLSIRNA_2)))
+
+
 ```
 
 

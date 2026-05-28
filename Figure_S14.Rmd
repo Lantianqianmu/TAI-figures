@@ -1,11 +1,11 @@
 ---
 title: "Figure S14"
-author: "Runze Xie @ institute of biophysics, 11/07/2025"
+author: "Runze Xie @ institute of biophysics, 28/05/2026"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_knit$set(root.dir = "/home/zeemeeuw/data/TAI-Rmd/V1_data")
+knitr::opts_knit$set(root.dir = '/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
 ```
 
 ### Loading packages
@@ -23,29 +23,16 @@ library(readxl)
 library(ggrepel)
 library(scplotter)
 library(BSgenome.Mmusculus.UCSC.mm10)
-source("/home/zeemeeuw/data/TAI-Rmd/V1_code/utils.R")
-setwd('/home/zeemeeuw/data/TAI-Rmd/V1_data')
+source("/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_code/utils.R")
+setwd('/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
 ```
 
 ### Read Seurat and ArchR object for plotting. 
 #### Critical: change the directory to your working dir accordingly!
-The DORC matrix was called with FigR. Here we provide called peak-GEX correlation dataframe and MAGIC-smoothed DORC/RNA matrix.
 ```{r include = TRUE}
-RDSdir <- "/home/zeemeeuw/data/mmJoint/RNA/data/lm_ym/" # output RDS file dir
-ATACdir <- "/home/zeemeeuw/data/mmJoint/ATAC/overlapped_harmony/" # ATAC root dir
-
-# read Seurat and ArchR object
-seu <- readRDS(paste0(RDSdir, "lm_merged_overlapped_harmony.rds"))
+ATACdir <- "/media/zeemeeuw/TAI-seq/mmTAI/ATAC/overlapped_harmony/" # ATAC root dir
 proj <- loadArchRProject(ATACdir)
 
-# load smoothed DORC and RNA matrix
-load(paste0(RDSdir, "lm_merged_overlapped_harmony_mat_smoothed.RData"))
-
-# load peak-GEX correlation dataframe
-load(paste0(RDSdir, "lm_merged_overlapped_harmony_DORC3.RData"))
-gpcorr.use <- gpcorr.use_raw[gpcorr.use_raw$rObs > 0,]
-gpcorr.use <- gpcorr.use[gpcorr.use$pvalZ <= 0.05,]
-dorcGenes <- sort(unique(gpcorr.use$Gene))
 ```
 
 
@@ -67,7 +54,6 @@ mmjoint_colors <- c("Quiescent" = "#bbdefb",
                     "Memory_3" = "#e53a46")
 
 
-
 color_bach2 <- c(
   "Cxcr6_hi_eff" = "#FF7F00",
   "Cxcr6_lo_eff" = "#DFB462", 
@@ -81,19 +67,22 @@ color_bach2oe <- c(
 
 
 color_group <- c(Ctrl = "#a0c9e5", KO = "#FDC360",
-                 "pMIG" = "#a0c9e5", "OE" = "#C06CAB")
+                 pMIG = "#a0c9e5", OE = "#C06CAB")
 
 ```
 
 
 
 ### Bach2 footpringing
-```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=4, fig.width=4}
+```{r eval=FALSE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=4, fig.width=4}
 
 motifPositions <- getPositions(proj)
 tf_abbr <- c("Bach2")
 markerMotifs <- unlist(lapply(tf_abbr, function(x) grep(x, names(motifPositions), value = TRUE)))
 markerMotifs
+
+proj <- addGroupCoverages(proj, groupBy = "cell_module", force = TRUE)
+
 seFoot <- getFootprints(
   ArchRProj = proj, 
   useGroups = c("Quiescent", "Priming_1", "Priming_2", "Activation_1", "Activation_2", 
@@ -122,13 +111,7 @@ plotFootprints(
 
 ### TF driver plot
 ```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=4, fig.width=4}
-
-load(paste0(RDSdir, "lm_merged_overlapped_harmony_GRN_list_by_tissue.RData"))
-grn <- grn_list$grn_sp
-d <- grn %>% dplyr::filter(DORC == "Bach2") %>% 
-  dplyr::mutate(isSig = if_else(abs(Score) >= 0.8 & abs(Corr) >= 0.7, "Yes", "No"))
-d$Label <- d$Motif
-d$Label[d$isSig %in% "No"] <- ""
+d <- read_tsv('source_fig_S14c.tsv')
 
 ggplot(data = d, aes(x = Corr, y = Enrichment.log10P, color = isSig)) + 
   geom_hline(yintercept = -log10(0.01), color = "gray60", linetype = "dashed") + 

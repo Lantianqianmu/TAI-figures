@@ -1,11 +1,11 @@
 ---
 title: "Figure S17"
-author: "Runze Xie @ institute of biophysics, 01/04/2026"
+author: "Runze Xie @ institute of biophysics, 04/24/2026"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_knit$set(root.dir = "/home/zeemeeuw/data/TAI-Rmd/V1_data")
+knitr::opts_knit$set(root.dir = '/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
 ```
 
 ### Loading packages
@@ -21,8 +21,8 @@ library(readxl)
 library(openxlsx)
 library(ggbreak)
 library(ggbeeswarm)
-source("/home/zeemeeuw/data/TAI-Rmd/V1_code/utils.R")
-setwd('/home/zeemeeuw/data/TAI-Rmd/V1_data')
+source("/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_code/utils.R")
+setwd('/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
 ```
 
 ### Set parameters for plotting
@@ -55,7 +55,7 @@ names(color_TCR) <- level_TCR
 ### Clonal expansion of selected TCRs
 ```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=17}
 
-meta <- read.xlsx('/home/zeemeeuw/data/mmJoint/cleanTCR/Lm-TCR4.57-clonotypes-paired in rna.xlsx') %>% 
+meta <- read.xlsx('Lm-TCR4.57-clonotypes-paired in rna.xlsx') %>% 
   dplyr::mutate(tissue = str_extract(Tissue_time, "(.*)-", group = 1)) %>% 
   group_by(CDRa_CDRb, timepoint, tissue, barcode) %>% 
   distinct(CDRa_CDRb, timepoint, tissue, barcode, .keep_all = TRUE) %>% 
@@ -71,7 +71,7 @@ meta <- read.xlsx('/home/zeemeeuw/data/mmJoint/cleanTCR/Lm-TCR4.57-clonotypes-pa
   dplyr::mutate(total_n = n()) %>% 
   ungroup()
 
-tcr <- read_tsv('TCR_cloned_CDR.tsv')
+tcr <- read_tsv("61_TCR_tet_coculture_BFP.tsv")
 
 plist <- list()
 for(phase in c("Priming", "Primary", "Recall")){
@@ -83,7 +83,7 @@ for(phase in c("Priming", "Primary", "Recall")){
     left_join(tcr_phase, by = join_by(CDRa_CDRb, group)) %>% 
     group_by(CDRa_CDRb) %>% 
     dplyr::mutate(n = n()) %>% 
-    arrange(desc(n), desc(id)) %>% 
+    arrange(dplyr::desc(n), dplyr::desc(id)) %>% 
     distinct() %>% 
     ungroup() %>% 
     dplyr::mutate(x = row_number()) %>% 
@@ -116,17 +116,7 @@ wrap_plots(plist, nrow = 1)
 ### Tet MFI and %tet+ of selected TCRs
 ```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=17}
 
-data <- readxl::read_excel("20251111-TCR213-275-Tet binding MFI-Prop-mean_3.xlsx") %>% 
-  rename_with(~c("phase", "TCR_rep", "mean_MFI", "mean_prop")) %>% 
-  dplyr::mutate(TCR = str_extract(TCR_rep, "(.*)-(.*)", group = 1),
-                rep = str_extract(TCR_rep, "(.*)-(.*)", group = 2)) %>% 
-  dplyr::mutate_at(vars(phase), ~factor(.x, levels = c("Ctrl", "Priming", "Primary", "Recall"))) %>% 
-  dplyr::mutate(log_MFI = log10(mean_MFI)) %>% 
-  dplyr::mutate(x = case_match(phase, "Ctrl" ~ 1, "Priming" ~ 2, "Primary" ~ 3, "Recall" ~ 4)) %>% 
-  arrange(phase, TCR, rep) %>% 
-  dplyr::mutate(x = consecutive_id(TCR)) %>% 
-  dplyr::mutate_at(vars(TCR), ~factor(.x, levels = level_TCR))
-
+data <- read_tsv('source_fig_S17e.tsv')
 
 data_summary <- data %>% group_by(TCR, x) %>% 
   dplyr::summarise(group_MFI = mean(mean_MFI), 
@@ -177,11 +167,9 @@ ggplot() +
 ### T test for Tet MFI and %tet+ of selected TCRs in different phase
 ```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=5}
 
-data <- readxl::read_excel("/home/zeemeeuw/data/mmJoint/TCR/ymdata/20251111-TCR213-275-Tet binding MFI-Prop-mean.xlsx") %>% 
-  rename_with(~c("phase", "TCR_rep", "mean_MFI", "mean_prop")) %>% 
-  dplyr::mutate_at(vars(phase), ~factor(.x, levels = c("Ctrl", "Priming", "Primary", "Recall"))) %>% 
-  dplyr::mutate(log_MFI = log10(mean_MFI)) %>% 
-  dplyr::mutate(x = case_match(phase, "Ctrl" ~ 1, "Priming" ~ 2, "Primary" ~ 3, "Recall" ~ 4))
+
+data <- read_tsv('source_fig_S17f.tsv') %>% 
+  dplyr::mutate_at(vars(phase), ~factor(.x, levels = c("Ctrl", "Priming", "Primary", "Recall")))
 
 comb <- t(combn(levels(data$phase), 2)) %>% as_tibble()
 df_sig <- lapply(1:nrow(comb), function(i) {
@@ -226,6 +214,10 @@ ggplot(data, aes(x = phase, y = mean_MFI)) +
   coord_cartesian(ylim = c(1.8, 4)) +
   guides(fill = guide_legend(override.aes = list(size = 5)))
 
+
+
+data <- read_tsv('source_fig_S17g.tsv') %>% 
+  dplyr::mutate_at(vars(phase), ~factor(.x, levels = c("Ctrl", "Priming", "Primary", "Recall")))
 
 comb <- t(combn(levels(data$phase), 2)) %>% as_tibble()
 df_sig <- lapply(1:nrow(comb), function(i) {

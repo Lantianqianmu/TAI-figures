@@ -374,8 +374,8 @@ library(openxlsx)
 library(readxl)
 library(UpSetR)
 library(tidyr)
-source(&quot;/home/zeemeeuw/data/TAI-Rmd/V1_code/utils.R&quot;)
-setwd(&#39;/home/zeemeeuw/data/TAI-Rmd/V1_data&#39;)</code></pre>
+source(&quot;/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_code/utils.R&quot;)
+setwd(&#39;/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data&#39;)</code></pre>
 </div>
 <div id="read-seurat-and-archr-object-for-plotting." class="section level3">
 <h3>Read Seurat and ArchR object for plotting.</h3>
@@ -383,10 +383,8 @@ setwd(&#39;/home/zeemeeuw/data/TAI-Rmd/V1_data&#39;)</code></pre>
 <h4>Critical: change the directory to your working dir accordingly!</h4>
 <p>The DORC matrix was called with FigR. Here we provide called peak-GEX
 correlation dataframe and MAGIC-smoothed DORC/RNA matrix.</p>
-<pre class="r"><code>RDSdir &lt;- &quot;/home/zeemeeuw/data/mmJoint/RNA/data/lm_ym/&quot; # output RDS file dir
-ATACdir &lt;- &quot;/home/zeemeeuw/data/mmJoint/ATAC/overlapped_harmony/&quot; # ATAC root dir
-
-# read Seurat and ArchR object
+<pre class="r"><code>RDSdir &lt;- &quot;/media/zeemeeuw/TAI-seq/mmTAI/RNA/&quot; # output RDS file dir
+ATACdir &lt;- &quot;/media/zeemeeuw/TAI-seq/mmTAI/ATAC/overlapped_harmony/&quot; # ATAC root dir
 seu &lt;- readRDS(paste0(RDSdir, &quot;lm_merged_overlapped_harmony.rds&quot;))
 proj &lt;- loadArchRProject(ATACdir)</code></pre>
 <pre><code>## Successfully loaded ArchRProject!</code></pre>
@@ -415,6 +413,9 @@ proj &lt;- loadArchRProject(ATACdir)</code></pre>
 ## </code></pre>
 <pre class="r"><code># load smoothed DORC and RNA matrix
 load(paste0(RDSdir, &quot;lm_merged_overlapped_harmony_mat_smoothed.RData&quot;))
+
+# load checkpoint information
+load(paste0(RDSdir, &quot;Spleen_DORC_RNA_residual_checkpoint.RData&quot;))
 
 # load peak-GEX correlation dataframe
 load(paste0(RDSdir, &quot;lm_merged_overlapped_harmony_DORC3.RData&quot;))
@@ -447,8 +448,7 @@ line_colors &lt;- c(&quot;DORC&quot; = &quot;#314A8C&quot;,
 </div>
 <div id="upset-plot" class="section level3">
 <h3>Upset plot</h3>
-<pre class="r"><code>load(paste0(RDSdir, &quot;Spleen_DORC_RNA_residual_checkpoint.RData&quot;))
-gname &lt;- lapply(cp_list, function(l){rownames(l$dorc)})
+<pre class="r"><code>gname &lt;- lapply(cp_list, function(l){rownames(l$dorc)})
 df &lt;- tibble(gene = gname$cp1_predi, count_1 = 1)
 for (i in 2:8) {
   cname &lt;- paste0(&quot;count_&quot;, i)
@@ -791,7 +791,7 @@ wrap_plots(plist, ncol = 2)</code></pre>
 ## [21] S4Vectors_0.36.2            BiocGenerics_0.44.0        
 ## [23] matrixStats_0.62.0          data.table_1.15.4          
 ## [25] stringr_1.5.1               plyr_1.8.9                 
-## [27] magrittr_2.0.3              gtable_0.3.5               
+## [27] magrittr_2.0.3              gtable_0.3.6               
 ## [29] gtools_3.9.3                gridExtra_2.3              
 ## [31] ArchR_1.0.2                 readr_2.1.5                
 ## [33] tibble_3.2.1                dplyr_1.1.4                
@@ -804,27 +804,27 @@ wrap_plots(plist, ncol = 2)</code></pre>
 ##   [5] tidyselect_1.2.1            AnnotationDbi_1.60.2       
 ##   [7] poweRlaw_0.70.6             RSQLite_2.3.7              
 ##   [9] htmlwidgets_1.5.4           BiocParallel_1.32.6        
-##  [11] Rtsne_0.16                  munsell_0.5.1              
-##  [13] codetools_0.2-18            ica_1.0-3                  
-##  [15] DT_0.28                     future_1.26.1              
-##  [17] miniUI_0.1.1.1              withr_3.0.0                
-##  [19] spatstat.random_3.1-5       colorspace_2.1-0           
-##  [21] progressr_0.10.1            highr_0.9                  
-##  [23] knitr_1.39                  rstudioapi_0.17.1          
-##  [25] ROCR_1.0-11                 tensor_1.5                 
-##  [27] listenv_0.8.0               labeling_0.4.3             
-##  [29] GenomeInfoDbData_1.2.9      polyclip_1.10-6            
-##  [31] farver_2.1.2                bit64_4.0.5                
-##  [33] parallelly_1.32.0           vctrs_0.6.5                
-##  [35] generics_0.1.3              xfun_0.40                  
-##  [37] R6_2.5.1                    bitops_1.0-7               
-##  [39] rhdf5filters_1.8.0          spatstat.utils_3.1-1       
-##  [41] cachem_1.1.0                DelayedArray_0.22.0        
-##  [43] promises_1.2.0.1            BiocIO_1.6.0               
-##  [45] scales_1.3.0                globals_0.15.1             
-##  [47] goftest_1.2-3               seqLogo_1.62.0             
-##  [49] rlang_1.1.4                 splines_4.2.1              
-##  [51] rtracklayer_1.56.1          lazyeval_0.2.2             
+##  [11] Rtsne_0.16                  codetools_0.2-18           
+##  [13] ica_1.0-3                   DT_0.28                    
+##  [15] future_1.26.1               miniUI_0.1.1.1             
+##  [17] withr_3.0.0                 spatstat.random_3.1-5      
+##  [19] colorspace_2.1-0            progressr_0.10.1           
+##  [21] highr_0.9                   knitr_1.39                 
+##  [23] rstudioapi_0.17.1           ROCR_1.0-11                
+##  [25] tensor_1.5                  listenv_0.8.0              
+##  [27] labeling_0.4.3              GenomeInfoDbData_1.2.9     
+##  [29] polyclip_1.10-6             bit64_4.0.5                
+##  [31] farver_2.1.2                parallelly_1.32.0          
+##  [33] vctrs_0.6.5                 generics_0.1.3             
+##  [35] xfun_0.40                   R6_2.5.1                   
+##  [37] bitops_1.0-7                rhdf5filters_1.8.0         
+##  [39] spatstat.utils_3.1-1        cachem_1.1.0               
+##  [41] DelayedArray_0.22.0         promises_1.2.0.1           
+##  [43] BiocIO_1.6.0                scales_1.4.0               
+##  [45] globals_0.15.1              goftest_1.2-3              
+##  [47] seqLogo_1.62.0              rlang_1.1.4                
+##  [49] splines_4.2.1               rtracklayer_1.56.1         
+##  [51] lazyeval_0.2.2              dichromat_2.0-0.1          
 ##  [53] spatstat.geom_3.2-4         yaml_2.3.5                 
 ##  [55] reshape2_1.4.4              abind_1.4-5                
 ##  [57] httpuv_1.6.5                tools_4.2.1                
@@ -833,7 +833,7 @@ wrap_plots(plist, ncol = 2)</code></pre>
 ##  [63] zlibbioc_1.44.0             purrr_1.0.2                
 ##  [65] RCurl_1.98-1.14             deldir_1.0-6               
 ##  [67] pbapply_1.5-0               cowplot_1.1.3              
-##  [69] zoo_1.8-10                  ggrepel_0.9.5              
+##  [69] zoo_1.8-15                  ggrepel_0.9.5              
 ##  [71] cluster_2.1.4               scattermore_1.2            
 ##  [73] lmtest_0.9-40               RANN_2.6.1                 
 ##  [75] fitdistrplus_1.1-8          hms_1.1.3                  

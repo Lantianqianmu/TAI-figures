@@ -1,11 +1,11 @@
 ---
 title: "Figure 6"
-author: "Runze Xie @ institute of biophysics, 01/04/2026"
+author: "Runze Xie @ institute of biophysics, 04/24/2026"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_knit$set(root.dir = "/home/zeemeeuw/data/TAI-Rmd/V1_data")
+knitr::opts_knit$set(root.dir = '/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
 ```
 
 ### Loading packages
@@ -23,25 +23,23 @@ library(pheatmap)
 library(Seurat)
 library(ArchR)
 library(scattermore)
-source("/home/zeemeeuw/data/TAI-Rmd/V1_code/utils.R")
-setwd('/home/zeemeeuw/data/TAI-Rmd/V1_data')
+source("/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_code/utils.R")
+setwd('/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
 ```
 
 ### Read Seurat and ArchR object for plotting. 
 #### Critical: change the directory to your working dir accordingly!
 The DORC matrix was called with FigR. Here we provide called peak-GEX correlation dataframe and MAGIC-smoothed DORC/RNA matrix.
 ```{r include = TRUE}
-RDSdir <- "/home/zeemeeuw/data/mmJoint/RNA/data/lm_ym/" # output RDS file dir
-ATACdir <- "/home/zeemeeuw/data/mmJoint/ATAC/overlapped_harmony/" # ATAC root dir
-
-# read Seurat and ArchR object
+RDSdir <- "/media/zeemeeuw/TAI-seq/mmTAI/RNA/" # output RDS file dir
+ATACdir <- "/media/zeemeeuw/TAI-seq/mmTAI/ATAC/overlapped_harmony/" # ATAC root dir
 seu <- readRDS(paste0(RDSdir, "lm_merged_overlapped_harmony.rds"))
 proj <- loadArchRProject(ATACdir)
 
 # load smoothed DORC and RNA matrix
 load(paste0(RDSdir, "lm_merged_overlapped_harmony_mat_smoothed.RData"))
 load(paste0(RDSdir, "calculated_seurat_gene_module.Rdata"))
-load(paste0(RDSdir, "gene_module.Rdata"))
+# load(paste0(RDSdir, "gene_module.Rdata"))
 
 k <- 10
 trajectory <- 'Spleen.trajectory'
@@ -84,6 +82,30 @@ level_TCR <- c("jurkat", "220", "221", "231", "232", "233", "234", "235",
 
 
 
+### Adding TCR into into seurat objects
+```{r include=FALSE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=4, fig.width=5}
+if(FALSE){
+  dft <- read.xlsx('Lm-TCR4.57-clonotypes-paired in rna.xlsx') %>% 
+  dplyr::mutate(tissue = str_extract(Tissue_time, "(.*)-", group = 1)) %>% 
+  group_by(CDRa_CDRb, timepoint, tissue, barcode) %>%
+  distinct(CDRa_CDRb, timepoint, tissue, barcode, .keep_all = TRUE) %>%
+  slice_head(n = 2) %>% 
+  group_by(barcode) %>% 
+  dplyr::mutate(cid = row_number())
+  
+  chain_1 <- dft %>% dplyr::filter(cid == 1) %>% dplyr::select(CDRa_CDRb, barcode)
+  vec_chain_1 <- chain_1$CDRa_CDRb
+  names(vec_chain_1) <- chain_1$barcode
+  chain_2 <- dft %>% dplyr::filter(cid == 2) %>% dplyr::select(CDRa_CDRb, barcode)
+  vec_chain_2 <- chain_2$CDRa_CDRb
+  names(vec_chain_2) <- chain_2$barcode
+  
+  
+  seu$chain1 <- vec_chain_1[seu$cellnames]
+  seu$chain2 <- vec_chain_2[seu$cellnames]
+}
+```
+
 ### Gene module score of catch and slip bond TCR
 ```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=3, fig.width=15}
 
@@ -103,30 +125,33 @@ meta <- read.xlsx('Lm-TCR4.57-clonotypes-paired in rna.xlsx') %>%
   dplyr::mutate(total_n = n()) %>% 
   ungroup()
 
-df_tcr <- read_tsv('TCR_cloned_CDR.tsv') %>% 
-  dplyr::filter(!is.na(group)) %>% 
+tibble_tcr <- read_tsv('meta_cloned_TCR.tsv') %>% 
   dplyr::mutate_at(vars('id'), as.character) %>% 
   dplyr::mutate_at(vars('id'), ~factor(.x, levels = level_TCR)) %>% 
   arrange(id) %>% 
-  column_to_rownames('id') %>% 
-  dplyr::filter(group == "Primary") %>% 
+  dplyr::filter(group == "Primary") %>%
   dplyr::filter(CDRa_CDRb %in% meta$CDRa_CDRb)
 
-tibble_tcr <- df_tcr %>% rownames_to_column('id')
 
-dft <- seu@meta.data %>% as_tibble() %>% 
-  dplyr::select(timepoint, tissue, cell_module, chain1, chain2, cellnames) 
-d1 <- dft %>% dplyr::select(timepoint, tissue, cell_module, chain1, cellnames) %>% rename_with(~c("timepoint", "tissue", "cell_module", "chain", "cellnames"))
-d2 <- dft %>% dplyr::select(timepoint, tissue, cell_module, chain2, cellnames) %>% rename_with(~c("timepoint", "tissue", "cell_module", "chain", "cellnames"))
-dft <- bind_rows(d1, d2) %>% 
+dft <- read.xlsx('Lm-TCR4.57-clonotypes-paired in rna.xlsx') %>% 
+  dplyr::mutate(tissue = str_extract(Tissue_time, "(.*)-", group = 1)) %>% 
+  group_by(CDRa_CDRb, timepoint, tissue, barcode) %>%
+  distinct(CDRa_CDRb, timepoint, tissue, barcode, .keep_all = TRUE) %>%
+  slice_head(n = 2) %>% 
+  group_by(CDRa_CDRb) %>% 
+  dplyr::mutate(count = n()) %>% 
+  left_join(seu@meta.data[,c('cell_module', 'cellnames')], by = join_by('barcode' == 'cellnames')) %>% 
+  dplyr::select(timepoint, tissue, cell_module, CDRa_CDRb, barcode) %>% 
+  rename_with(~c("timepoint", "tissue", "cell_module", "chain", "cellnames")) %>% 
   dplyr::filter(tissue == "Spleen") %>%  ### filter sp
   dplyr::filter(!is.na(chain)) %>% 
   group_by(timepoint, chain) %>% 
   dplyr::mutate(count_timepoint = n())
 
+  
 dft_d8 <- dft %>% 
   dplyr::filter(timepoint == "d8") %>% 
-  dplyr::filter(chain %in% df_tcr$CDRa_CDRb) %>% 
+  dplyr::filter(chain %in% tibble_tcr$CDRa_CDRb) %>% 
   left_join(tibble_tcr, by = join_by("chain" == "CDRa_CDRb")) %>% 
   group_by(chain) %>% 
   dplyr::mutate(EMTratio = sum(cell_module %in% c("Effector-memory_transition_1", "Effector-memory_transition_2", "Effector-memory_transition_3")) / n()) %>% 
@@ -162,23 +187,13 @@ df_time <- df_time_corrected %>%
 
 
 data_time <- df_time %>% left_join(dft_d8, by = "cellnames") %>% 
+  dplyr::mutate(x = case_match(bond, "catch" ~ 1L, "slip" ~ 2L)) %>% 
   dplyr::mutate_at(vars(bond), ~factor(.x, levels = c("catch", "slip"))) %>% 
   dplyr::filter(abs(old_time_to_cp3) < 20)
 
 
-df_time <- df_time_corrected %>% 
-  dplyr::filter(cellnames %in% dft_d8$cellnames) %>% 
-  dplyr::mutate(old_time_to_cp2 = old_time - cp2,
-                old_time_to_cp3 = old_time - cp3) 
-  
-  
-  data_time <- df_time %>% left_join(dft_d8, by = "cellnames") %>% 
-    dplyr::mutate_at(vars(bond), ~factor(.x, levels = c("catch", "slip"))) %>% 
-    dplyr::filter(abs(old_time_to_cp3) < 20)
 
-    data_time <- data_time %>% 
-      dplyr::mutate(x = case_match(bond, "catch" ~ 1L, "slip" ~ 2L)) %>% 
-      dplyr::mutate_at(vars(bond), ~factor(.x, levels = c("catch", "slip")))
+  
 
 plot_list <- list()
 for (metric in c("Naive", "Activation/Effector function", "Cytotoxicity", "Chemokine/Chemokine receptor", "Adhesion", "old_time_to_cp2", "old_time_to_cp3")) {
@@ -226,6 +241,8 @@ for (metric in c("Naive", "Activation/Effector function", "Cytotoxicity", "Chemo
   
 }
 wrap_plots(plot_list, nrow = 1)
+
+# save(df_time, file = 'figure_6ab.RData')
   
 
 ```
@@ -380,16 +397,24 @@ meta <- read.xlsx('Lm-TCR4.57-clonotypes-paired in rna.xlsx') %>%
   dplyr::mutate(total_n = n()) %>% 
   ungroup()
 
-df_tcr <- read_tsv('TCR_cloned_CDR.tsv') %>% 
-  dplyr::filter(!is.na(group)) %>% 
+# df_tcr <- read_tsv('TCR_cloned_CDR.tsv') %>% 
+#   dplyr::filter(!is.na(group)) %>% 
+#   dplyr::mutate_at(vars('id'), as.character) %>% 
+#   dplyr::mutate_at(vars('id'), ~factor(.x, levels = level_TCR)) %>% 
+#   arrange(id) %>% 
+#   column_to_rownames('id') %>% 
+#   dplyr::filter(group == "Primary") %>% 
+#   dplyr::filter(CDRa_CDRb %in% meta$CDRa_CDRb)
+# 
+# tibble_tcr <- df_tcr %>% rownames_to_column('id')
+
+tibble_tcr <- read_tsv('meta_cloned_TCR.tsv') %>% 
   dplyr::mutate_at(vars('id'), as.character) %>% 
   dplyr::mutate_at(vars('id'), ~factor(.x, levels = level_TCR)) %>% 
   arrange(id) %>% 
-  column_to_rownames('id') %>% 
-  dplyr::filter(group == "Primary") %>% 
+  dplyr::filter(group == "Primary") %>%
   dplyr::filter(CDRa_CDRb %in% meta$CDRa_CDRb)
 
-tibble_tcr <- df_tcr %>% rownames_to_column('id')
 
 dft <- seu@meta.data %>% as_tibble() %>% 
   dplyr::select(timepoint, tissue, cell_module, chain1, chain2, cellnames) 
@@ -523,17 +548,24 @@ meta <- read.xlsx('Lm-TCR4.57-clonotypes-paired in rna.xlsx') %>%
   dplyr::mutate(total_n = n()) %>% 
   ungroup()
 
-df_tcr <- read_tsv('TCR_cloned_CDR.tsv') %>% 
-  dplyr::filter(!is.na(group)) %>% 
+# df_tcr <- read_tsv('TCR_cloned_CDR.tsv') %>% 
+#   dplyr::filter(!is.na(group)) %>% 
+#   dplyr::mutate_at(vars('id'), as.character) %>% 
+#   dplyr::mutate_at(vars('id'), ~factor(.x, levels = level_TCR)) %>% 
+#   arrange(id) %>% 
+#   column_to_rownames('id') %>% 
+#   dplyr::filter(group == "Primary") %>% 
+#   dplyr::filter(CDRa_CDRb %in% meta$CDRa_CDRb)
+# 
+# tibble_tcr <- df_tcr %>% rownames_to_column('id')
+
+
+tibble_tcr <- read_tsv('meta_cloned_TCR.tsv') %>% 
   dplyr::mutate_at(vars('id'), as.character) %>% 
   dplyr::mutate_at(vars('id'), ~factor(.x, levels = level_TCR)) %>% 
   arrange(id) %>% 
-  column_to_rownames('id') %>% 
-  dplyr::filter(group == "Primary") %>% 
+  dplyr::filter(group == "Primary") %>%
   dplyr::filter(CDRa_CDRb %in% meta$CDRa_CDRb)
-
-tibble_tcr <- df_tcr %>% rownames_to_column('id')
-
 
 dft <- seu@meta.data %>% as_tibble() %>% 
   dplyr::select(timepoint, tissue, cell_module, chain1, chain2, cellnames) 
@@ -668,19 +700,29 @@ meta <- read.xlsx('Lm-TCR4.57-clonotypes-paired in rna.xlsx') %>%
   dplyr::mutate(total_n = n()) %>% 
   ungroup()
 
-df_tcr <- read_tsv('TCR_cloned_CDR.tsv') %>% 
-  dplyr::filter(!is.na(group)) %>% 
-  dplyr::mutate_at(vars('id'), as.character) %>% 
-  dplyr::mutate_at(vars('id'), ~factor(.x, levels = level_TCR)) %>% 
-  arrange(id) %>% 
-  column_to_rownames('id') %>% 
-  dplyr::filter(CDRa_CDRb %in% meta$CDRa_CDRb)
 
-dft <- seu@meta.data %>% as_tibble() %>% 
-  dplyr::select(timepoint, tissue, cell_module, chain1, chain2, cellnames) 
-d1 <- dft %>% dplyr::select(timepoint, tissue, cell_module, chain1, cellnames) %>% rename_with(~c("timepoint", "tissue", "cell_module", "chain", "cellnames"))
-d2 <- dft %>% dplyr::select(timepoint, tissue, cell_module, chain2, cellnames) %>% rename_with(~c("timepoint", "tissue", "cell_module", "chain", "cellnames"))
-dft <- bind_rows(d1, d2) %>% 
+# dft <- seu@meta.data %>% as_tibble() %>% 
+#   dplyr::select(timepoint, tissue, cell_module, chain1, chain2, cellnames) 
+# d1 <- dft %>% dplyr::select(timepoint, tissue, cell_module, chain1, cellnames) %>% rename_with(~c("timepoint", "tissue", "cell_module", "chain", "cellnames"))
+# d2 <- dft %>% dplyr::select(timepoint, tissue, cell_module, chain2, cellnames) %>% rename_with(~c("timepoint", "tissue", "cell_module", "chain", "cellnames"))
+# dft <- bind_rows(d1, d2) %>% 
+#   dplyr::filter(tissue == "Spleen") %>%  ### filter sp
+#   dplyr::filter(!is.na(chain)) %>% 
+#   group_by(timepoint, chain) %>% 
+#   dplyr::mutate(count_timepoint = n())
+	
+
+
+dft <- read.xlsx('Lm-TCR4.57-clonotypes-paired in rna.xlsx') %>% 
+  dplyr::mutate(tissue = str_extract(Tissue_time, "(.*)-", group = 1)) %>% 
+  group_by(CDRa_CDRb, timepoint, tissue, barcode) %>%
+  distinct(CDRa_CDRb, timepoint, tissue, barcode, .keep_all = TRUE) %>%
+  slice_head(n = 2) %>% 
+  group_by(CDRa_CDRb) %>% 
+  dplyr::mutate(count = n()) %>% 
+  left_join(seu@meta.data[,c('cell_module', 'cellnames')], by = join_by('barcode' == 'cellnames')) %>% 
+  dplyr::select(timepoint, tissue, cell_module, CDRa_CDRb, barcode) %>% 
+  rename_with(~c("timepoint", "tissue", "cell_module", "chain", "cellnames")) %>% 
   dplyr::filter(tissue == "Spleen") %>%  ### filter sp
   dplyr::filter(!is.na(chain)) %>% 
   group_by(timepoint, chain) %>% 
@@ -802,6 +844,9 @@ data_time_avg <- bind_rows(dft_d3, dft_d5, dft_d8, dft_d14) %>%
                    old_time_to_cp3 = mean(old_time_to_cp3, na.rm = TRUE),
                    old_time_to_cp4 = mean(old_time_to_cp4, na.rm = TRUE))
 
+
+
+
 R_val <- cor(data_time_avg$old_time_to_cp3, data_time_avg$ratio_EMT, method = 'pearson')
 ggplot(data_time_avg, aes(x = old_time_to_cp3, y = ratio_EMT)) +
   geom_smooth(se = FALSE, formula = y ~ x, method = lm, fullrange = FALSE) +
@@ -821,9 +866,15 @@ ggplot(data_time_avg, aes(x = old_time_to_cp3, y = ratio_EMT)) +
                                theme = theme(legend.ticks = element_blank()))) +
   coord_fixed(ratio = (max(data_time_avg$old_time_to_cp3) - min(data_time_avg$old_time_to_cp3))/
                 (max(data_time_avg$ratio_EMT) - min(data_time_avg$ratio_EMT))) +
-  annotate(geom = "text", x = -20, y = 0.9, colour = "black", size = 5, angle = 0, label = paste0("pearson\nR = ",  R_val))
+  annotate(geom = "text", x = -20, y = 0.9, colour = "black", size = 5, angle = 0, label = paste0("pearson\nR = ",  R_val)) 
 
 ```
+
+
+
+
+
+
 
   
 ```{r eval=TRUE, include=TRUE}

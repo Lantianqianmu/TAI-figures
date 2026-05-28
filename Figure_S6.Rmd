@@ -1,11 +1,11 @@
 ---
 title: "Figure S6"
-author: "Runze Xie @ institute of biophysics, 11/07/2025"
+author: "Runze Xie @ institute of biophysics, 28/05/2026"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_knit$set(root.dir = "/home/zeemeeuw/data/TAI-Rmd/V1_data")
+knitr::opts_knit$set(root.dir = '/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
 ```
 
 ### Loading packages
@@ -22,15 +22,15 @@ library(openxlsx)
 library(readxl)
 library(ggalluvial)
 library(ggrepel)
-source("/home/zeemeeuw/data/TAI-Rmd/V1_code/utils.R")
-setwd('/home/zeemeeuw/data/TAI-Rmd/V1_data')
+source("/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_code/utils.R")
+setwd('/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
 ```
 
 ### Read Seurat and ArchR object for plotting. 
 #### Critical: change the directory to your working dir accordingly!
 ```{r include = TRUE}
-RDSdir <- "/home/zeemeeuw/data/mmJoint/RNA/data/lm_ym/" # output RDS file dir
-ATACdir <- "/home/zeemeeuw/data/mmJoint/ATAC/overlapped_harmony/" # ATAC root dir
+RDSdir <- "/media/zeemeeuw/TAI-seq/mmTAI/RNA/" # output RDS file dir
+ATACdir <- "/media/zeemeeuw/TAI-seq/mmTAI/ATAC/overlapped_harmony/" # ATAC root dir
 seu <- readRDS(paste0(RDSdir, "lm_merged_overlapped_harmony.rds"))
 proj <- loadArchRProject(ATACdir)
 ```
@@ -59,8 +59,32 @@ tissue_colors <-  c("Spleen" = "#36A23D", "Ln" = "#2884E7", "Liver" = "#817ab9",
 
 ### ATAC/RNA UMAP
 ```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=8}
-CellDimPlot(seu, reduction = "UMAP_LSI_ATAC",  theme = "theme_blank", legend.position = "right", group_by = "cell_module", raster = TRUE, pt_size = 0.01, palcolor = mmjoint_colors)
-CellDimPlot(seu, reduction = "UMAP_LSI_RNA",  theme = "theme_blank", legend.position = "right", group_by = "cell_module", raster = TRUE, pt_size = 0.01, palcolor = mmjoint_colors)
+
+data <- read_tsv('source_fig_S6b.tsv')
+ggplot(data, aes(x = UMAP_1_ATAC, y = UMAP_2_ATAC, color = cell_module))  +
+  geom_point(size = 0.1) +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+      axis.text.x = element_text(size = 8, color = "black"),
+      axis.text.y = element_text(size = 8, color = "black"),
+      axis.title.x = element_text(size = 13),
+      axis.title.y = element_text(size = 13)) +
+  scale_color_manual(values = mmjoint_colors) +
+  guides(color = guide_legend(override.aes = list(size = 3))) +
+  coord_fixed((max(data$UMAP_1_ATAC) - min(data$UMAP_1_ATAC)) / (max(data$UMAP_2_ATAC) - min(data$UMAP_2_ATAC)))
+
+ggplot(data, aes(x = UMAP_1_RNA, y = UMAP_2_RNA, color = cell_module))  +
+  geom_point(size = 0.1) +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+      axis.text.x = element_text(size = 8, color = "black"),
+      axis.text.y = element_text(size = 8, color = "black"),
+      axis.title.x = element_text(size = 13),
+      axis.title.y = element_text(size = 13)) +
+  scale_color_manual(values = mmjoint_colors) +
+  guides(color = guide_legend(override.aes = list(size = 3))) +
+  coord_fixed((max(data$UMAP_1_RNA) - min(data$UMAP_1_RNA)) / (max(data$UMAP_2_RNA) - min(data$UMAP_2_RNA)))
+
 
 
 ```

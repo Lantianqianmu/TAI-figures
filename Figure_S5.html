@@ -9,7 +9,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
-<meta name="author" content="Runze Xie @ institute of biophysics, 11/07/2025" />
+<meta name="author" content="Runze Xie @ institute of biophysics, 28/05/2026" />
 
 
 <title>Figure S5</title>
@@ -356,7 +356,7 @@ display: none;
 
 
 <h1 class="title toc-ignore">Figure S5</h1>
-<h4 class="author">Runze Xie @ institute of biophysics, 11/07/2025</h4>
+<h4 class="author">Runze Xie @ institute of biophysics, 28/05/2026</h4>
 
 </div>
 
@@ -374,15 +374,15 @@ library(scplotter)
 library(openxlsx)
 library(readxl)
 library(circlize)
-source(&quot;/home/zeemeeuw/data/TAI-Rmd/V1_code/utils.R&quot;)
-setwd(&#39;/home/zeemeeuw/data/TAI-Rmd/V1_data&#39;)</code></pre>
+source(&quot;/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_code/utils.R&quot;)
+setwd(&#39;/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data&#39;)</code></pre>
 </div>
 <div id="read-seurat-and-archr-object-for-plotting." class="section level3">
 <h3>Read Seurat and ArchR object for plotting.</h3>
 <div id="critical-change-the-directory-to-your-working-dir-accordingly" class="section level4">
 <h4>Critical: change the directory to your working dir accordingly!</h4>
-<pre class="r"><code>RDSdir &lt;- &quot;/home/zeemeeuw/data/mmJoint/RNA/data/lm_ym/&quot; # output RDS file dir
-ATACdir &lt;- &quot;/home/zeemeeuw/data/mmJoint/ATAC/overlapped_harmony/&quot; # ATAC root dir
+<pre class="r"><code>RDSdir &lt;- &quot;/media/zeemeeuw/TAI-seq/mmTAI/RNA/&quot; # output RDS file dir
+ATACdir &lt;- &quot;/media/zeemeeuw/TAI-seq/mmTAI/ATAC/overlapped_harmony/&quot; # ATAC root dir
 seu &lt;- readRDS(paste0(RDSdir, &quot;lm_merged_overlapped_harmony.rds&quot;))
 proj &lt;- loadArchRProject(ATACdir)</code></pre>
 <pre><code>## Successfully loaded ArchRProject!</code></pre>
@@ -432,24 +432,7 @@ tissue_colors &lt;-  c(&quot;Spleen&quot; = &quot;#36A23D&quot;, &quot;Ln&quot; 
 </div>
 <div id="circos-plot" class="section level3">
 <h3>Circos plot</h3>
-<pre class="r"><code>meta &lt;- readxl::read_excel(&quot;joint.Lm-overlapped-clean.seurat.meta.xlsx&quot;)
-tcr_paired &lt;- readxl::read_excel(&quot;Lm-TCR4.57-clonotypes-paired in rna.xlsx&quot;) %&gt;% 
-  dplyr::mutate(tissue = str_extract(Tissue_time, &quot;(.*)-&quot;, group = 1)) %&gt;% 
-  group_by(CDRa_CDRb, timepoint, tissue, barcode) %&gt;% 
-  distinct(CDRa_CDRb, timepoint, tissue, barcode, .keep_all = TRUE) %&gt;% 
-  ungroup()
-tcr_all &lt;- readxl::read_excel(&quot;Lm-TCR4.57-clonotypes-all in rna.xlsx&quot;)
-
-bc_paired &lt;- tcr_paired$barcode
-bc_a &lt;- tcr_all$barcode[is.na(tcr_all$chainB)]
-bc_b &lt;- tcr_all$barcode[is.na(tcr_all$chainA)]
-
-meta &lt;- meta %&gt;% dplyr::mutate(has_paired_tcr = if_else(cellnames %in% tcr_paired$barcode, &quot;Y&quot;, &quot;N&quot;),
-                               has_all_tcr = if_else(cellnames %in% tcr_all$barcode, &quot;Y&quot;, &quot;N&quot;),
-                               tcr = case_when(cellnames %in% bc_paired ~ &quot;paired&quot;,
-                                               cellnames %in% bc_a ~ &quot;A only&quot;,
-                                               cellnames %in% bc_b ~ &quot;B only&quot;,
-                                               .default = &quot;undetected&quot;))
+<pre class="r"><code>meta &lt;- read_tsv(&#39;source_fig_S5b.tsv&#39;)
 
 meta_summary &lt;- meta %&gt;% 
   group_by(sample) %&gt;% 
@@ -745,7 +728,7 @@ pheatmap::pheatmap(Roe[,c(&quot;WT_Ln&quot;, &quot;WT_Spleen&quot;, &quot;WT_Liv
 ## [21] S4Vectors_0.36.2            BiocGenerics_0.44.0        
 ## [23] matrixStats_0.62.0          data.table_1.15.4          
 ## [25] stringr_1.5.1               plyr_1.8.9                 
-## [27] magrittr_2.0.3              gtable_0.3.5               
+## [27] magrittr_2.0.3              gtable_0.3.6               
 ## [29] gtools_3.9.3                gridExtra_2.3              
 ## [31] ArchR_1.0.2                 readr_2.1.5                
 ## [33] tibble_3.2.1                dplyr_1.1.4                
@@ -782,63 +765,63 @@ pheatmap::pheatmap(Roe[,c(&quot;WT_Ln&quot;, &quot;WT_Spleen&quot;, &quot;WT_Liv
 ##  [53] abind_1.4-5                 cachem_1.1.0               
 ##  [55] withr_3.0.0                 ggforce_0.4.2              
 ##  [57] BSgenome_1.64.0             progressr_0.10.1           
-##  [59] sctransform_0.4.1           GenomicAlignments_1.32.1   
-##  [61] goftest_1.2-3               cluster_2.1.4              
-##  [63] gsl_2.1-8                   lazyeval_0.2.2             
-##  [65] seqLogo_1.62.0              crayon_1.5.3               
-##  [67] spatstat.explore_3.2-1      labeling_0.4.3             
-##  [69] pkgconfig_2.0.3             tweenr_2.0.3               
-##  [71] nlme_3.1-159                rlang_1.1.4                
-##  [73] globals_0.15.1              lifecycle_1.0.4            
-##  [75] miniUI_0.1.1.1              MatrixModels_0.5-1         
-##  [77] cellranger_1.1.0            polyclip_1.10-6            
-##  [79] lmtest_0.9-40               Rhdf5lib_1.18.2            
-##  [81] zoo_1.8-10                  pheatmap_1.0.12            
-##  [83] ggridges_0.5.3              GlobalOptions_0.1.2        
-##  [85] png_0.1-8                   rjson_0.2.21               
-##  [87] bitops_1.0-7                R.oo_1.25.0                
-##  [89] KernSmooth_2.23-20          rhdf5filters_1.8.0         
-##  [91] Biostrings_2.66.0           blob_1.2.3                 
-##  [93] shape_1.4.6                 parallelly_1.32.0          
-##  [95] spatstat.random_3.1-5       CNEr_1.32.0                
-##  [97] scales_1.3.0                memoise_2.0.1              
-##  [99] ica_1.0-3                   scRepertoire_2.2.1         
-## [101] zlibbioc_1.44.0             compiler_4.2.1             
-## [103] BiocIO_1.6.0                RColorBrewer_1.1-3         
-## [105] fitdistrplus_1.1-8          Rsamtools_2.12.0           
-## [107] cli_3.6.3                   XVector_0.38.0             
-## [109] listenv_0.8.0               pbapply_1.5-0              
-## [111] tidyselect_1.2.1            stringi_1.8.4              
-## [113] forcats_1.0.0               highr_0.9                  
-## [115] yaml_2.3.5                  ggrepel_0.9.5              
-## [117] sass_0.4.2                  tools_4.2.1                
-## [119] future.apply_1.9.0          rstudioapi_0.17.1          
-## [121] TFMPvalue_0.0.9             cubature_2.1.1             
-## [123] farver_2.1.2                Rtsne_0.16                 
-## [125] ggraph_2.1.0                digest_0.6.36              
-## [127] pracma_2.4.2                shiny_1.7.1                
-## [129] gridtext_0.1.5              later_1.3.0                
-## [131] RcppAnnoy_0.0.19            AnnotationDbi_1.60.2       
-## [133] httr_1.4.7                  ggdendro_0.2.0             
-## [135] colorspace_2.1-0            XML_3.99-0.10              
-## [137] tensor_1.5                  reticulate_1.25            
-## [139] splines_4.2.1               uwot_0.1.14                
-## [141] spatstat.utils_3.1-1        graphlayouts_0.8.2         
-## [143] sp_1.5-0                    plotly_4.10.0              
-## [145] xtable_1.8-4                poweRlaw_0.70.6            
-## [147] jsonlite_1.8.8              truncdist_1.0-2            
-## [149] tidygraph_1.3.1             R6_2.5.1                   
-## [151] pillar_1.9.0                htmltools_0.5.2            
-## [153] mime_0.12                   glue_1.7.0                 
-## [155] fastmap_1.2.0               DT_0.28                    
-## [157] BiocParallel_1.32.6         codetools_0.2-18           
-## [159] utf8_1.2.4                  lattice_0.20-45            
-## [161] bslib_0.4.0                 spatstat.sparse_3.0-2      
-## [163] evd_2.3-7.1                 leiden_0.4.2               
-## [165] GO.db_3.16.0                zip_2.2.1                  
-## [167] survival_3.4-0              rmarkdown_2.16             
-## [169] munsell_0.5.1               GenomeInfoDbData_1.2.9     
-## [171] reshape2_1.4.4</code></pre>
+##  [59] vroom_1.6.5                 sctransform_0.4.1          
+##  [61] GenomicAlignments_1.32.1    goftest_1.2-3              
+##  [63] cluster_2.1.4               gsl_2.1-8                  
+##  [65] lazyeval_0.2.2              seqLogo_1.62.0             
+##  [67] crayon_1.5.3                spatstat.explore_3.2-1     
+##  [69] labeling_0.4.3              pkgconfig_2.0.3            
+##  [71] tweenr_2.0.3                nlme_3.1-159               
+##  [73] rlang_1.1.4                 globals_0.15.1             
+##  [75] lifecycle_1.0.4             miniUI_0.1.1.1             
+##  [77] MatrixModels_0.5-1          dichromat_2.0-0.1          
+##  [79] cellranger_1.1.0            polyclip_1.10-6            
+##  [81] lmtest_0.9-40               Rhdf5lib_1.18.2            
+##  [83] zoo_1.8-15                  pheatmap_1.0.12            
+##  [85] ggridges_0.5.3              GlobalOptions_0.1.2        
+##  [87] png_0.1-8                   rjson_0.2.21               
+##  [89] bitops_1.0-7                R.oo_1.25.0                
+##  [91] KernSmooth_2.23-20          rhdf5filters_1.8.0         
+##  [93] Biostrings_2.66.0           blob_1.2.3                 
+##  [95] shape_1.4.6                 parallelly_1.32.0          
+##  [97] spatstat.random_3.1-5       CNEr_1.32.0                
+##  [99] scales_1.4.0                memoise_2.0.1              
+## [101] ica_1.0-3                   scRepertoire_2.2.1         
+## [103] zlibbioc_1.44.0             compiler_4.2.1             
+## [105] BiocIO_1.6.0                RColorBrewer_1.1-3         
+## [107] fitdistrplus_1.1-8          Rsamtools_2.12.0           
+## [109] cli_3.6.3                   XVector_0.38.0             
+## [111] listenv_0.8.0               pbapply_1.5-0              
+## [113] tidyselect_1.2.1            stringi_1.8.4              
+## [115] forcats_1.0.0               highr_0.9                  
+## [117] yaml_2.3.5                  ggrepel_0.9.5              
+## [119] sass_0.4.2                  tools_4.2.1                
+## [121] future.apply_1.9.0          rstudioapi_0.17.1          
+## [123] TFMPvalue_0.0.9             cubature_2.1.1             
+## [125] farver_2.1.2                Rtsne_0.16                 
+## [127] ggraph_2.1.0                digest_0.6.36              
+## [129] pracma_2.4.2                shiny_1.7.1                
+## [131] gridtext_0.1.5              later_1.3.0                
+## [133] RcppAnnoy_0.0.19            AnnotationDbi_1.60.2       
+## [135] httr_1.4.7                  ggdendro_0.2.0             
+## [137] colorspace_2.1-0            XML_3.99-0.10              
+## [139] tensor_1.5                  reticulate_1.25            
+## [141] splines_4.2.1               uwot_0.1.14                
+## [143] spatstat.utils_3.1-1        graphlayouts_0.8.2         
+## [145] sp_1.5-0                    plotly_4.10.0              
+## [147] xtable_1.8-4                poweRlaw_0.70.6            
+## [149] jsonlite_1.8.8              truncdist_1.0-2            
+## [151] tidygraph_1.3.1             R6_2.5.1                   
+## [153] pillar_1.9.0                htmltools_0.5.2            
+## [155] mime_0.12                   glue_1.7.0                 
+## [157] fastmap_1.2.0               DT_0.28                    
+## [159] BiocParallel_1.32.6         codetools_0.2-18           
+## [161] utf8_1.2.4                  lattice_0.20-45            
+## [163] bslib_0.4.0                 spatstat.sparse_3.0-2      
+## [165] evd_2.3-7.1                 leiden_0.4.2               
+## [167] GO.db_3.16.0                zip_2.2.1                  
+## [169] survival_3.4-0              rmarkdown_2.16             
+## [171] GenomeInfoDbData_1.2.9      reshape2_1.4.4</code></pre>
 </div>
 
 

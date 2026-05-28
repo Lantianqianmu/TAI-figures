@@ -1,11 +1,11 @@
 ---
 title: "Figure S1"
-author: "Runze Xie @ institute of biophysics, 11/07/2025"
+author: "Runze Xie @ institute of biophysics, 28/05/2026"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_knit$set(root.dir = "/home/zeemeeuw/data/TAI-Rmd/V1_data")
+knitr::opts_knit$set(root.dir = '/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
 ```
 
 
@@ -18,8 +18,8 @@ library(readr)
 library(tidyr)
 library(ggnewscale)
 library(ggforce)
-source("/home/zeemeeuw/data/TAI-Rmd/V1_code/utils.R")
-setwd('/home/zeemeeuw/data/TAI-Rmd/V1_data')
+source("/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_code/utils.R")
+setwd('/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
 ```
 
 ### Set parameters for plotting
@@ -43,34 +43,26 @@ assignIdents <- function(x, min_frags_human, min_frags_mouse = min_frags_human){
 ### Species mixing
 ATAC
 ```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=5}
-hg38 <- read.delim("G3MERGE-ata_hg38_1_fragments_count.txt",
-                   header = FALSE, stringsAsFactors = FALSE, col.names = c("barcode", "count.hg38"))
-mm10 <- read.delim("G3MERGE-ata_mm10_1_fragments_count.txt",
-                   header = FALSE, stringsAsFactors = FALSE, col.names = c("barcode", "count.mm10"))
 
 minFrags_human <- 3000
 minFrags_mouse <- 3000
-data <- merge(hg38, mm10, by = 'barcode', all = TRUE)
-data[is.na(data)] <- 0
-data$ident <- apply(data, 1, assignIdents, min_frags_human = minFrags_human, min_frags_mouse = minFrags_mouse)
-data$ident <- factor(data$ident, levels = c("low yield", "human", "mouse", "mix"))
-median_hg38 <- median(data$count.hg38[data$ident == "human"])
-median_mm10 <- median(data$count.mm10[data$ident == "mouse"])
-drate <- round(100*sum(data$ident == "mix")/sum(data$ident != "low yield"), 3)
-data$Type <- data$ident
-data <- data %>% arrange(factor(data$ident, levels = c("mix", "low yield", "human", "mouse")))
-data$x <- data$count.hg38/1000
-data$y <- data$count.mm10/1000
-
 x_limit <- 60
 y_limit <- 60
+data <- read_tsv('source_fig_S1c.tsv')
+data$Type <- factor(data$Type, levels = c("low yield", "human", "mouse", "mix"))
 data_sum <- data.frame(table(data$Type))[2:4,]
 colnames(data_sum) <- c("Type", "Counts")
 data_sum$Type <- factor(data_sum$Type, levels = c("mouse", "human", "mix"))
 data_sum$x <- x_limit*0.7
 data_sum$y <- seq(from = y_limit*0.7-y_limit/10, to = y_limit*0.7+y_limit/10, by = y_limit/10)
+median_hg38 <- median(data$count.hg38[data$ident == "human"])
+median_mm10 <- median(data$count.mm10[data$ident == "mouse"])
+drate <- round(100*sum(data$ident == "mix")/sum(data$ident != "low yield"), 3)
+data <- data %>% arrange(factor(data$ident, levels = c("mix", "low yield", "human", "mouse")))
+data$x <- data$count.hg38/1000
+data$y <- data$count.mm10/1000
 
-data$Type <- factor(data$Type, levels = c("low yield", "human", "mouse", "mix"))
+
 ggplot(data, aes(x = x, y = y)) +
   geom_point(size = 0.2, aes(colour = Type)) +
   scale_color_manual(values = c("#AAAAAA", "#4169E1", "#DC143C", "#c9c9c9")) +
@@ -92,16 +84,12 @@ ggplot(data, aes(x = x, y = y)) +
 RNA
 
 ```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=5}
-hg38 <- read.delim("G3MERGE-rna_hg38_1_umis_count.txt",
-                   header = FALSE, stringsAsFactors = FALSE, col.names = c("barcode", "count.hg38"))
-mm10 <- read.delim("G3MERGE-rna_mm10_1_umis_count.txt",
-                   header = FALSE, stringsAsFactors = FALSE, col.names = c("barcode", "count.mm10"))
+
 minFrags_human <- 1000
 minFrags_mouse <- 3000
-data <- merge(hg38, mm10, by = 'barcode', all = TRUE)
-data[is.na(data)] <- 0
-data$ident <- apply(data, 1, assignIdents, min_frags_human = minFrags_human, min_frags_mouse = minFrags_mouse)
-data$ident <- factor(data$ident, levels = c("low yield", "human", "mouse", "mix"))
+x_limit <- 30
+y_limit <- 50
+data <- read_tsv('source_fig_S1d.tsv')
 median_hg38 <- median(data$count.hg38[data$ident == "human"])
 median_mm10 <- median(data$count.mm10[data$ident == "mouse"])
 drate <- round(100*sum(data$ident == "mix")/sum(data$ident != "low yield"), 3)
@@ -109,15 +97,13 @@ data$Type <- data$ident
 data <- data %>% arrange(factor(data$ident, levels = c("mix", "low yield", "human", "mouse")))
 data$x <- data$count.hg38/1000
 data$y <- data$count.mm10/1000
-x_limit <- 30
-y_limit <- 50
 data_sum <- data.frame(table(data$Type))[2:4,]
 colnames(data_sum) <- c("Type", "Counts")
 data_sum$Type <- factor(data_sum$Type, levels = c("mouse", "human", "mix"))
 data_sum$x <- x_limit*0.7
 data_sum$y <- seq(from = y_limit*0.7-y_limit/10, to = y_limit*0.7+y_limit/10, by = y_limit/10)
-
 data$Type <- factor(data$Type, levels = c("low yield", "human", "mouse", "mix"))
+
 ggplot(data, aes(x = x, y = y)) +
   geom_point(size = 0.1, aes(colour = Type)) +
   scale_color_manual(values = c("#AAAAAA", "#4169E1", "#DC143C", "#c9c9c9")) +
@@ -296,7 +282,7 @@ ggplot(data = data, aes(x = reads, y = counts)) +
 color_JH8 <- '#d2ecf9'
 color_GJ <- '#fdb87d'
 
-data <- read_tsv("source_fig_S1J.txt")
+data <- read_tsv("source_fig_S1j.tsv")
 data$reads <- factor(data$reads)
 data$dN_SMRT <- factor(data$dN_SMRT, levels =  c("No", "Yes"))
 out <- c()
@@ -320,7 +306,7 @@ ggplot(data, aes(x = reads, y = log10(umis))) +
   theme(plot.title = element_text(hjust = 0.5))
  
 
-data <- read_tsv("source_fig_S1K.txt")
+data <- read_tsv("source_fig_S1k.tsv")
 data$reads <- factor(data$reads)
 data$dN_SMRT <- factor(data$dN_SMRT, levels =  c("No", "Yes"))
 out <- c()
@@ -346,7 +332,7 @@ ggplot(data, aes(x = reads, y = log10(genes))) +
 
 color_JH8 <- 'grey'
 color_GJ <- "#021EA9"
-data <- read_tsv("source_fig_S1L.txt")
+data <- read_tsv("source_fig_S1l.tsv")
 ggplot(data = data, aes(x = reads, y = umis)) +
   theme_classic() +
   geom_point(aes(color = dN_SMRT), size = 1, alpha = 1, shape = 16) +
@@ -364,7 +350,7 @@ ggplot(data = data, aes(x = reads, y = umis)) +
   guides(color = guide_legend(override.aes = list(size = 3))) +
   coord_fixed(ratio = 5/3)
 
-data <- read_tsv("source_fig_S1M.txt")
+data <- read_tsv("source_fig_S1m.tsv")
 ggplot(data = data, aes(x = reads, y = genes)) +
   theme_classic() +
   geom_point(aes(color = dN_SMRT), size = 1, alpha = 1, shape = 16) +

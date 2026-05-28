@@ -1,11 +1,11 @@
 ---
 title: "Figure 4"
-author: "Runze Xie @ institute of biophysics, 11/07/2025"
+author: "Runze Xie @ institute of biophysics, 28/05/2026"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_knit$set(root.dir = "/home/zeemeeuw/data/TAI-Rmd/V1_data")
+knitr::opts_knit$set(root.dir = '/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
 ```
 
 ### Loading packages
@@ -24,8 +24,8 @@ library(ggalt)
 library(readxl)
 library(openxlsx)
 library(pheatmap)
-source("/home/zeemeeuw/data/TAI-Rmd/V1_code/utils.R")
-setwd('/home/zeemeeuw/data/TAI-Rmd/V1_data')
+source("/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_code/utils.R")
+setwd('/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
 ```
 
 ### Set parameters for plotting
@@ -66,7 +66,7 @@ tcr_paired_pie <- tcr_paired %>%
   dplyr::mutate(counts = n()) %>% 
   group_by(timepoint, tissue) %>% 
   dplyr::mutate(prop = counts/n()) %>% 
-  arrange(desc(prop)) %>% 
+  dplyr::arrange(dplyr::desc(prop)) %>% 
   ungroup() %>% 
   dplyr::select(CDRa_CDRb, timepoint, tissue, counts, prop) %>% 
   distinct()
@@ -140,7 +140,7 @@ tcr_paired2 <- tcr_paired %>%
   dplyr::mutate(counts = n()) %>% 
   group_by(timepoint, tissue) %>% 
   dplyr::mutate(prop = counts/n()) %>% 
-  arrange(desc(prop)) %>% 
+  dplyr::arrange(dplyr::desc(prop)) %>% 
   ungroup() %>% 
   dplyr::select(CDRa_CDRb, timepoint, tissue, counts, prop) %>% 
   distinct()
@@ -432,7 +432,7 @@ data <- data_longer %>%
   dplyr::mutate(count_timepoint = n()) %>%  
   ungroup() %>% 
   distinct() %>% 
-  arrange(CDR3a_CDR3b)
+  dplyr::arrange(CDR3a_CDR3b)
 
 data_hmp <- data %>%
   group_by(timepoint) %>%
@@ -450,11 +450,11 @@ data_dom <- data_hmp %>%
   dplyr::mutate_at(vars(timepoint), ~factor(.x, levels = c("D5", "D8", "D14", "D21", "R5"))) %>% 
   dplyr::mutate_at(vars(dominance), ~factor(.x, levels = c("D5", "D8", "D14", "D21", "R5")))
 
-tcr_d5 <- data_dom %>% dplyr::filter(dominance == "D5") %>% arrange(desc(prop)) %>% pull(CDR3a_CDR3b) %>% unique()
-tcr_d8 <- data_dom %>% dplyr::filter(dominance == "D8") %>% arrange(desc(prop)) %>% pull(CDR3a_CDR3b) %>% unique()
-tcr_d14 <- data_dom %>% dplyr::filter(dominance == "D14") %>% arrange(desc(prop)) %>% pull(CDR3a_CDR3b) %>% unique()
-tcr_d21 <- data_dom %>% dplyr::filter(dominance == "D21") %>% arrange(desc(prop)) %>% pull(CDR3a_CDR3b) %>% unique()
-tcr_R5 <- data_dom %>% dplyr::filter(dominance == "R5") %>% arrange(desc(prop)) %>% pull(CDR3a_CDR3b) %>% unique()
+tcr_d5 <- data_dom %>% dplyr::filter(dominance == "D5") %>% dplyr::arrange(dplyr::desc(prop)) %>% pull(CDR3a_CDR3b) %>% unique()
+tcr_d8 <- data_dom %>% dplyr::filter(dominance == "D8") %>% dplyr::arrange(dplyr::desc(prop)) %>% pull(CDR3a_CDR3b) %>% unique()
+tcr_d14 <- data_dom %>% dplyr::filter(dominance == "D14") %>% dplyr::arrange(dplyr::desc(prop)) %>% pull(CDR3a_CDR3b) %>% unique()
+tcr_d21 <- data_dom %>% dplyr::filter(dominance == "D21") %>% dplyr::arrange(dplyr::desc(prop)) %>% pull(CDR3a_CDR3b) %>% unique()
+tcr_R5 <- data_dom %>% dplyr::filter(dominance == "R5") %>% dplyr::arrange(dplyr::desc(prop)) %>% pull(CDR3a_CDR3b) %>% unique()
 
 color_d5 <- rev(colorRampPalette(c("#DEBCE0", "#984E9D", "#4A104D"))(n_distinct(tcr_d5)))
 names(color_d5) <- tcr_d5
@@ -525,9 +525,9 @@ data_grid <- data_hmp %>%
   dplyr::mutate(norm_freq = prop/sum(prop)*100) %>% 
   dplyr::mutate_at(vars(timepoint), ~factor(.x, levels = c("D8", "D14", "D21", "R5")))
 
-tcr_d8 <- data_grid %>% dplyr::filter(group %in% c("d8_increase", "d8_decrease", "d8_decay")) %>% arrange(desc(prop)) %>% pull(CDR3a_CDR3b) %>% unique()
-tcr_d14 <- data_grid %>% dplyr::filter(group %in% c("d14_increase", "d14_decrease", "d14_decay")) %>% arrange(desc(prop)) %>% pull(CDR3a_CDR3b) %>% unique()
-tcr_d21 <- data_grid %>% dplyr::filter(group %in% c("d21_increase", "d21_decrease", "d21_decay")) %>% arrange(desc(prop)) %>% pull(CDR3a_CDR3b) %>% unique()
+tcr_d8 <- data_grid %>% dplyr::filter(group %in% c("d8_increase", "d8_decrease", "d8_decay")) %>% arrange(dplyr::desc(prop)) %>% pull(CDR3a_CDR3b) %>% unique()
+tcr_d14 <- data_grid %>% dplyr::filter(group %in% c("d14_increase", "d14_decrease", "d14_decay")) %>% arrange(dplyr::desc(prop)) %>% pull(CDR3a_CDR3b) %>% unique()
+tcr_d21 <- data_grid %>% dplyr::filter(group %in% c("d21_increase", "d21_decrease", "d21_decay")) %>% arrange(dplyr::desc(prop)) %>% pull(CDR3a_CDR3b) %>% unique()
 
 color_d8 <- rev(colorRampPalette(c("#FAC491", "#F77F11", "#703A07"))(n_distinct(tcr_d8)))
 names(color_d8) <- tcr_d8

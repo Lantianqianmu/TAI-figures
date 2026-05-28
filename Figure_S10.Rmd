@@ -1,11 +1,11 @@
 ---
 title: "Figure S10"
-author: "Runze Xie @ institute of biophysics, 11/07/2025"
+author: "Runze Xie @ institute of biophysics, 28/05/2026"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_knit$set(root.dir = "/home/zeemeeuw/data/TAI-Rmd/V1_data")
+knitr::opts_knit$set(root.dir = "/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data")
 ```
 
 ### Loading packages
@@ -21,20 +21,16 @@ library(Seurat)
 library(openxlsx)
 library(readxl)
 library(splines)
-library(ggraph)
-library(igraph)
-source("/home/zeemeeuw/data/TAI-Rmd/V1_code/utils.R")
-setwd('/home/zeemeeuw/data/TAI-Rmd/V1_data')
+source("/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_code/utils.R")
+setwd('/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
 ```
 
 ### Read Seurat and ArchR object for plotting. 
 #### Critical: change the directory to your working dir accordingly!
 The DORC matrix was called with FigR. Here we provide called peak-GEX correlation dataframe and MAGIC-smoothed DORC/RNA matrix.
 ```{r include = TRUE}
-RDSdir <- "/home/zeemeeuw/data/mmJoint/RNA/data/lm_ym/" # output RDS file dir
-ATACdir <- "/home/zeemeeuw/data/mmJoint/ATAC/overlapped_harmony/" # ATAC root dir
-
-# read Seurat and ArchR object
+RDSdir <- "/media/zeemeeuw/TAI-seq/mmTAI/RNA/" # output RDS file dir
+ATACdir <- "/media/zeemeeuw/TAI-seq/mmTAI/ATAC/overlapped_harmony/" # ATAC root dir
 seu <- readRDS(paste0(RDSdir, "lm_merged_overlapped_harmony.rds"))
 proj <- loadArchRProject(ATACdir)
 
@@ -163,7 +159,6 @@ wrap_plots(plist, nrow = 2)
 
 
 # DORC -> RNA
-
 trajectory <- "Spleen.trajectory"
 cells <- proj$cellNames[!is.na(getCellColData(proj, select = trajectory, drop = TRUE))]
 pseudotime <- getCellColData(proj, select = trajectory, drop = TRUE)[!is.na(getCellColData(proj, select = trajectory, drop = TRUE))]
@@ -188,6 +183,7 @@ embedding <- seu@reductions$UMAP_LSI_Combined_batch3.3@cell.embeddings[rownames(
 plist <- list()
 for (k in c(1, 10, 50)) {
   df_time <- calc_neigh(data_sub, ndmat, nrmat, embedding[rownames(data_sub),], max_per_cell = k, metric = 'cosine', cutoff = 0.95)
+  df_time$cellnames <- data_sub$cellnames
   df_time_corrected <- df_time %>% 
     dplyr::mutate(new_time = if_else(old_time > 98 & new_time < 60, new_time + 100, new_time)) %>% 
     dplyr::mutate(diff = new_time - old_time)
@@ -255,6 +251,8 @@ for (k in c(1, 10, 50)) {
   df_time_corrected$tech = "DORC"
   df_time_corrected$diff_pred <- predict_y(df_time_corrected$old_time)
   
+  # saveRDS(df_time_corrected, paste0(RDSdir, "chromatin_checkpoint_", 'Spleen.trajectory', "_k_", k, ".rds"))
+
   
   p <- ggplot(df_time_corrected, aes(x = old_time, color = tech)) +
     geom_line(aes(y = diff_pred), size = 1) +
@@ -275,6 +273,107 @@ for (k in c(1, 10, 50)) {
   plist <- c(plist, list(p))
 }
 wrap_plots(plist, nrow = 1)
+
+
+if(FALSE){
+  trajectory <- "Spleen.trajectory_re"
+cells <- proj$cellNames[!is.na(getCellColData(proj, select = trajectory, drop = TRUE))]
+pseudotime <- getCellColData(proj, select = trajectory, drop = TRUE)[!is.na(getCellColData(proj, select = trajectory, drop = TRUE))]
+archdata <- data.frame(cells = proj$cellNames, pseudotime = getCellColData(proj, select = trajectory, drop = TRUE))
+rownames(archdata) <- archdata$cells
+data <- data.frame(seu@reductions$UMAP_LSI_Combined_batch3.3@cell.embeddings) 
+data$barcode <- rownames(data)
+data <- cbind(data, seu@meta.data)
+archdata <- archdata[rownames(data),]
+data$pseudotime <- archdata$pseudotime
+data$Trajectory <- data$pseudotime
+data_sub <- data[cells,]
+
+idx <- which(rowMeans(dorcMat_sm_norm - rnaMat_sm_norm) > 0)
+
+norm_list <- filter_matrix(dmat = dorcMat_sm_norm[idx,rownames(data_sub)], rmat = rnaMat_sm_norm[idx,rownames(data_sub)], scale_max_abs_val = 10, gene_corr_cutoff = 0, scaling = 'minmax', ncore = 12)
+ndmat <- norm_list[["ndmat"]]
+nrmat <- norm_list[["nrmat"]]
+
+embedding <- seu@reductions$UMAP_LSI_Combined_batch3.3@cell.embeddings[rownames(data_sub),]
+
+plist <- list()
+for (k in c(1, 10, 50)) {
+  df_time <- calc_neigh(data_sub, ndmat, nrmat, embedding[rownames(data_sub),], max_per_cell = k, metric = 'cosine', cutoff = 0.95)
+  df_time$cellnames <- data_sub$cellnames
+  df_time_corrected <- df_time %>% 
+    dplyr::mutate(new_time = if_else(old_time > 98 & new_time < 60, new_time + 100, new_time)) %>% 
+    dplyr::mutate(diff = new_time - old_time)
+  df_time_corrected$y <- df_time_corrected$diff
+  df_time_corrected$x <- df_time_corrected$old_time
+  
+  # spline fitting
+  library(splines)
+  knots <- 1:50 * 2 -1
+  fit <- lm(y ~ ns(x, knots = knots, Boundary.knots = c(0, 100)), data = df_time_corrected)
+  predict_y <- function(x_new) {
+    predict(fit, newdata = data.frame(x = x_new))
+  }
+  
+  # calc roots
+  roots <- list()
+  for (i in 0:99) {
+    f <- function(x) predict_y(x)
+    root <- tryCatch({
+      # if(predict_y(i + 1) - predict_y(i) < 1){return(NA)}
+      uniroot(f, interval = c(i, i + 1))$root
+    },
+    error = function(e) NA 
+    )
+    roots[[i + 1]] <- root
+  }
+  valid_roots <- unlist(roots[!is.na(roots)])
+  spline_deriv <- function(x) {
+    h <- 1e-5
+    (predict(fit, newdata = data.frame(x = x + h)) - 
+        predict(fit, newdata = data.frame(x = x - h))) / (2 * h)
+  }
+  
+  derivatives_at_roots <- sapply(valid_roots, spline_deriv)
+  valid_roots <- valid_roots[derivatives_at_roots > 0]
+  
+  find_extrema <- function(a, b, n = 100) {
+    x_grid <- seq(a, b, length.out = n)  
+    deriv_values <- sapply(x_grid, spline_deriv)
+    extrema <- c()
+    for (i in 2:(n - 1)) {
+      if (deriv_values[i] * deriv_values[i + 1] < 0) { 
+        root <- uniroot(
+          spline_deriv,
+          interval = c(x_grid[i], x_grid[i + 1]),
+          tol = 1e-6
+        )$root
+        extrema <- c(extrema, root)
+      }
+    }
+    return(extrema)
+  }
+  
+  extrema_x <- find_extrema(0, 100)
+  extreme_filter <- sapply(valid_roots, function(x){
+    x_start <- tail(extrema_x[which(extrema_x < x)], 1)
+    if(length(x_start) == 0) x_start <- 0
+    x_end <- head(extrema_x[which(extrema_x > x)], 1)
+    if(length(x_end) == 0) x_end <- 100
+    predict_y(x_end) - predict_y(x_start) > 2
+  })
+  valid_roots <- valid_roots[extreme_filter]
+  print(valid_roots)
+  
+  df_time_corrected$tech = "DORC"
+  df_time_corrected$diff_pred <- predict_y(df_time_corrected$old_time)
+  
+  # saveRDS(df_time_corrected, paste0(RDSdir, "chromatin_checkpoint_", 'Spleen.trajectory_re', "_k_", k, ".rds"))
+
+}
+
+}
+
 
 
 ```
@@ -349,6 +448,7 @@ embedding <- seu@reductions$UMAP_LSI_Combined_batch3.3@cell.embeddings[rownames(
 plist <- list()
 for (k in c(1, 10, 50)) {
   df_time <- calc_neigh(data_sub, ndmat, nrmat, embedding[rownames(data_sub),], max_per_cell = k, metric = 'cosine', cutoff = 0.95)
+
   df_time_corrected <- df_time %>% 
     dplyr::mutate(new_time = if_else(old_time > 98 & new_time < 60, new_time + 100, new_time)) %>% 
     dplyr::mutate(diff = new_time - old_time)

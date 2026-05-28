@@ -5,7 +5,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_knit$set(root.dir = "/home/zeemeeuw/data/TAI-Rmd/V1_data")
+knitr::opts_knit$set(root.dir = '/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
 ```
 
 ### Loading packages
@@ -19,8 +19,8 @@ library(patchwork)
 library(ggrepel)
 library(readxl)
 library(openxlsx)
-source("/home/zeemeeuw/data/TAI-Rmd/V1_code/utils.R")
-setwd('/home/zeemeeuw/data/TAI-Rmd/V1_data')
+source("/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_code/utils.R")
+setwd('/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
 ```
 
 ### Set parameters for plotting
@@ -53,7 +53,7 @@ var_equal <- TRUE
 ### ECDF of %tet+ of cloned TCR
 ```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=5}
 
-data <- read_excel("61_TCR_tet_coculture_BFP.xlsx") %>% 
+data <- read_tsv(file = "61_TCR_tet_coculture_BFP.tsv") %>% 
   dplyr::mutate_at(vars(TCR), ~factor(.x, levels = level_TCR)) %>% 
   dplyr::mutate_at(vars(phase), ~factor(.x, levels = c("Priming", "Primary", "Recall"))) %>%  
   arrange(TCR) %>% 

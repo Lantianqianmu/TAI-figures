@@ -1,11 +1,11 @@
 ---
 title: "Figure S12"
-author: "Runze Xie @ institute of biophysics, 11/07/2025"
+author: "Runze Xie @ institute of biophysics, 28/05/2026"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_knit$set(root.dir = "/home/zeemeeuw/data/TAI-Rmd/V1_data")
+knitr::opts_knit$set(root.dir = "/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data")
 ```
 
 ### Loading packages
@@ -21,23 +21,23 @@ library(Seurat)
 library(openxlsx)
 library(readxl)
 library(splines)
-source("/home/zeemeeuw/data/TAI-Rmd/V1_code/utils.R")
-setwd('/home/zeemeeuw/data/TAI-Rmd/V1_data')
+source("/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_code/utils.R")
+setwd('/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
 ```
 #### Critical: change the directory to your working dir accordingly!
 The DORC matrix was called with FigR. Here we provide called peak-GEX correlation dataframe and MAGIC-smoothed DORC/RNA matrix.
 ```{r include = TRUE}
 # dir for mTEC
-mTEC_root <- '/home/zeemeeuw/data/mTEC/'
+mTEC_root <- '/media/zeemeeuw/TAI-seq/mTEC/'
 
 # dir for mmskin
-mmskin_root <- '/home/zeemeeuw/data/mouse_skin/'
+mmskin_root <- '/media/zeemeeuw/TAI-seq/mouse_skin/'
 
 # dir for pituitary
-pit_root <- '/home/zeemeeuw/data/pituitary/'
+pit_root <- '/media/zeemeeuw/TAI-seq/pituitary/'
 
 # dir for TAI-d8sp
-d8sp_root <- '/home/zeemeeuw/data/mmJoint/'
+d8sp_root <- '/media/zeemeeuw/TAI-seq/mmTAI_d8sp/'
 
 ```
 
@@ -46,6 +46,11 @@ d8sp_root <- '/home/zeemeeuw/data/mmJoint/'
 color_tech <- c("SCARlink" = "#00008B",
                 "DORC" = '#d0021b')
 
+
+```
+
+### DORC-computed Chromatin potential for d8sp
+```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=5}
 mmjoint_colors <- c("Quiescent" = "#bbdefb", 
                     "Priming_1" =  "#519ec6", 
                     "Priming_2" = "#3971ff",
@@ -60,15 +65,13 @@ mmjoint_colors <- c("Quiescent" = "#bbdefb",
                     "Memory_1" = "#ef999c", 
                     "Memory_2" = "#eb5e63",
                     "Memory_3" = "#e53a46")
-```
 
-### DORC-computed Chromatin potential for d8sp
-```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=5}
-load(paste0(d8sp_root, 'RNA/data/lm_ym/d8sp_small_DORC.RData'))
-load(paste0(d8sp_root, 'RNA/data/lm_ym/d8sp_small_mat_smoothed.RData'))
-seu <- readRDS(paste0(d8sp_root, 'RNA/data/lm_ym/d8sp_small.rds'))
-proj <- loadArchRProject(paste0(d8sp_root, 'ATAC/d8sp_rep1'))
+load(paste0(d8sp_root, 'RNA/mmTAI_d8sp_full_dorcgenes.RData'))
+load(paste0(d8sp_root, 'RNA/mmTAI_d8sp_full_dorcgenes_mat_smoothed.RData'))
+seu <- readRDS(paste0(d8sp_root, 'RNA/mmTAI_d8sp.rds'))
+proj <- loadArchRProject(paste0(d8sp_root, 'ATAC/mmTAI_d8sp'))
 
+pkm <- pkm[,colnames(seu)]
 meta <- colData(pkm) %>% as.data.frame()
 meta$celltype <- meta$cell_module
 meta$cellnames <- rownames(meta)
@@ -78,11 +81,11 @@ umap <- meta %>% dplyr::select("UMAP_1", "UMAP_2") %>% as.matrix()
 rownames(umap) <- rownames(meta)
 
 groupDF <- meta %>% dplyr::select(Clusters, cellnames)
-trajectory <- c("C3", "C6")
+trajectory <- c("C4", "C5")
 traj <- get_trajectory(groupDF, group_by = "Clusters", embedding = umap, trajectory = trajectory, preFilterQuantile = 1, postFilterQuantile = 1)
 
-dorcMat_sm_norm <- t(apply(dorcMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
-rnaMat_sm_norm <- t(apply(rnaMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
+# dorcMat_sm_norm <- t(apply(dorcMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
+# rnaMat_sm_norm <- t(apply(rnaMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
 idx <- which(rowMeans(dorcMat_sm_norm - rnaMat_sm_norm) > 0)
 
 norm_list <- filter_matrix(dmat = dorcMat_sm_norm[idx,rownames(traj)], rmat = rnaMat_sm_norm[idx,rownames(traj)], scale_max_abs_val = 10, gene_corr_cutoff = 0, scaling = 'minmax', ncore = 12)
@@ -104,6 +107,7 @@ data_sub$pseudotime <- traj[data_sub$cellnames,]$Trajectory
 
 xrange <- max(data$UMAP_1) - min(data$UMAP_1)
 yrange <- max(data$UMAP_2) - min(data$UMAP_2)
+  
 
 ggplot(data) +
   geom_point(aes(x = UMAP_1, y = UMAP_2), show.legend = FALSE, size = 0.5, alpha = 0.8, color = 'grey90') +
@@ -139,11 +143,11 @@ umap <- meta %>% dplyr::select("UMAP_1", "UMAP_2") %>% as.matrix()
 rownames(umap) <- rownames(meta)
 
 groupDF <- meta %>% dplyr::select(Clusters, cellnames)
-trajectory <- c("C3", "C6")
+trajectory <- c("C4", "C5")
 traj <- get_trajectory(groupDF, group_by = "Clusters", embedding = umap, trajectory = trajectory, preFilterQuantile = 1, postFilterQuantile = 1)
 
-dorcMat_sm_norm <- t(apply(dorcMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
-rnaMat_sm_norm <- t(apply(rnaMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
+# dorcMat_sm_norm <- t(apply(dorcMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
+# rnaMat_sm_norm <- t(apply(rnaMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
 idx <- which(rowMeans(dorcMat_sm_norm - rnaMat_sm_norm) > 0)
 
 norm_list <- filter_matrix(dmat = dorcMat_sm_norm[idx,rownames(traj)], rmat = rnaMat_sm_norm[idx,rownames(traj)], scale_max_abs_val = 10, gene_corr_cutoff = 0, scaling = 'minmax', ncore = 12)
@@ -244,27 +248,19 @@ meta <- read_delim(paste0(d8sp_root, 'scarlink/cell_info.txt')) %>% as.data.fram
 meta$celltype <- meta$cell_module
 rownames(meta) <- meta$cellnames
 
-dorcmat <- t(as.matrix(read_tsv(paste0(d8sp_root, 'scarlink/scarlink_out/pred_unsmooth.csv'))))
-colnames(dorcmat) <- meta$cellnames
-
-rnamat <- t(as.matrix(read_tsv(paste0(d8sp_root, 'scarlink/scarlink_out/obs_unsmooth.csv'))))
-colnames(rnamat) <- meta$cellnames
-
-umap <- seu@reductions$UMAP_LSI_Combined@cell.embeddings
+umap <- seu@reductions$UMAP_Combined@cell.embeddings
 colnames(umap) <- c("UMAP_1", "UMAP_2")
 umap <- as.matrix(umap)
 
 meta$UMAP_1 <- umap[,1]
 meta$UMAP_2 <- umap[,2]
-  
-load(paste0(d8sp_root, 'RNA/data/lm_ym/d8sp_small_scarlink_smoothed.RData'))
+
+load(paste0(d8sp_root, 'RNA/mmTAI_d8sp_hvg3000_scarlink_mat_smoothed.RData'))
 
 groupDF <- meta %>% dplyr::select(Clusters, cellnames)
-trajectory <- c("C3", "C6")
+trajectory <- c("C4", "C5")
 traj <- get_trajectory(groupDF, group_by = "Clusters", embedding = umap, trajectory = trajectory, preFilterQuantile = 1, postFilterQuantile = 1)
 
-dorcMat_sm_norm <- t(apply(dorcMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
-rnaMat_sm_norm <- t(apply(rnaMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
 idx <- which(rowMeans(dorcMat_sm_norm - rnaMat_sm_norm) > 0)
 
 norm_list <- filter_matrix(dmat = dorcMat_sm_norm[idx,rownames(traj)], rmat = rnaMat_sm_norm[idx,rownames(traj)], scale_max_abs_val = 10, gene_corr_cutoff = 0, scaling = 'minmax', ncore = 12)
@@ -304,13 +300,13 @@ ggplot(data) +
 
 ### SCARlink-computed Checkpoints for d8sp
 ```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=5}
-k <- 10
+k <- 50
 groupDF <- meta %>% dplyr::select(Clusters, cellnames)
-trajectory <- c("C3", "C6")
+trajectory <- c("C4", "C5")
 traj <- get_trajectory(groupDF, group_by = "Clusters", embedding = umap, trajectory = trajectory, preFilterQuantile = 1, postFilterQuantile = 1)
 
-dorcMat_sm_norm <- t(apply(dorcMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
-rnaMat_sm_norm <- t(apply(rnaMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
+# dorcMat_sm_norm <- t(apply(dorcMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
+# rnaMat_sm_norm <- t(apply(rnaMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
 idx <- which(rowMeans(dorcMat_sm_norm - rnaMat_sm_norm) > 0)
 
 norm_list <- filter_matrix(dmat = dorcMat_sm_norm[idx,rownames(traj)], rmat = rnaMat_sm_norm[idx,rownames(traj)], scale_max_abs_val = 10, gene_corr_cutoff = 0, scaling = 'minmax', ncore = 12)
@@ -415,33 +411,34 @@ color_mTEC <- c("Transitional" = "#F7B4B4",
                 "Late mature" = "#ABDEB6", 
                 "Immature" = "#fbdf72")
 
-seu <- readRDS(paste0(mTEC_root, 'RNA/mm_mTEC_wo_mimetic.rds'))
-proj <- loadArchRProject(paste0(mTEC_root, 'ATAC/mm_mTEC_wo_mimetic'))
+seu <- readRDS(paste0(mTEC_root, "RNA/mm_mTEC_clean.rds"))
+proj <- loadArchRProject(paste0(mTEC_root, "ATAC/mm_mTEC_clean"))
+load(paste0(mTEC_root, "RNA/mm_mTEC_scarlink_mat_smoothed.RData"))
 meta <- read_delim(paste0(mTEC_root, 'scarlink/cell_info.txt')) %>% as.data.frame()
 meta$celltype <- seu$celltype[meta$cellnames]
 rownames(meta) <- meta$cellnames
 
-dorcmat <- t(as.matrix(read_tsv(paste0(mTEC_root, 'scarlink/scarlink_out/pred_unsmooth.csv'))))
-colnames(dorcmat) <- meta$cellnames
+# dorcmat <- t(as.matrix(read_tsv(paste0(mTEC_root, 'scarlink/scarlink_out/pred_unsmooth.csv'))))
+# colnames(dorcmat) <- meta$cellnames
+# 
+# rnamat <- t(as.matrix(read_tsv(paste0(mTEC_root, 'scarlink/scarlink_out/obs_unsmooth.csv'))))
+# colnames(rnamat) <- meta$cellnames
 
-rnamat <- t(as.matrix(read_tsv(paste0(mTEC_root, 'scarlink/scarlink_out/obs_unsmooth.csv'))))
-colnames(rnamat) <- meta$cellnames
-
-umap <- seu@reductions$PHATE_2@cell.embeddings
+umap <- seu@reductions$PHATE@cell.embeddings
 colnames(umap) <- c("UMAP_1", "UMAP_2")
 umap <- as.matrix(umap)
 
 meta$UMAP_1 <- umap[,1]
 meta$UMAP_2 <- umap[,2]
 
-load(paste0(mTEC_root, "RNA/mm_mTEC_wo_mimetic_scarlink_smoothed.RData"))
+
 
 groupDF <- meta %>% dplyr::select(celltype, cellnames)
 trajectory <- c("Immature", "Transitional", "Early mature", "Mid mature", "Late mature")
 traj <- get_trajectory(groupDF, group_by = "celltype", embedding = umap, trajectory = trajectory, preFilterQuantile = 1, postFilterQuantile = 1)
 
-dorcMat_sm_norm <- t(apply(dorcMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
-rnaMat_sm_norm <- t(apply(rnaMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
+# dorcMat_sm_norm <- t(apply(dorcMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
+# rnaMat_sm_norm <- t(apply(rnaMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
 idx <- which(rowMeans(dorcMat_sm_norm - rnaMat_sm_norm) > 0)
 
 norm_list <- filter_matrix(dmat = dorcMat_sm_norm[idx,rownames(traj)], rmat = rnaMat_sm_norm[idx,rownames(traj)], scale_max_abs_val = 10, gene_corr_cutoff = 0, scaling = 'minmax', ncore = 12)
@@ -453,7 +450,7 @@ embedding_arr_length_list <- calc_velocity(ndmat, nrmat, embedding[rownames(traj
 embedding_arr_length <- embedding_arr_length_list[[1]]
 arr_length <- embedding_arr_length_list[[2]]
 
-arrow_data <- smooth_arrows(embedding[rownames(traj),], embedding_arr_length, smooth_w = 30, min_count = 5, coef = 1.5, draw_all = FALSE)
+arrow_data <- smooth_arrows(embedding[rownames(traj),], embedding_arr_length, smooth_w = 30, min_count = 10, coef = 1.5, draw_all = FALSE)
 
 data <- meta %>% dplyr::select(celltype, cellnames)
 data$UMAP_1 <- umap[,1]
@@ -463,10 +460,6 @@ data_sub$pseudotime <- traj[data_sub$cellnames,]$Trajectory
 
 xrange <- max(data$UMAP_1) - min(data$UMAP_1)
 yrange <- max(data$UMAP_2) - min(data$UMAP_2)
-
-
-
-
 
 ggplot(data) +
   geom_point(aes(x = UMAP_1, y = UMAP_2), show.legend = FALSE, size = 0.5, alpha = 0.8, color = 'grey90') +
@@ -484,20 +477,16 @@ ggplot(data) +
 
 ### SCARlink-computed checkpoints for mTEC
 ```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=5}
-k <- 50
-
+k <- 10
 groupDF <- meta %>% dplyr::select(celltype, cellnames)
 trajectory <- c("Immature", "Transitional", "Early mature", "Mid mature", "Late mature")
 traj <- get_trajectory(groupDF, group_by = "celltype", embedding = umap, trajectory = trajectory, preFilterQuantile = 1, postFilterQuantile = 1)
 
-dorcMat_sm_norm <- t(apply(dorcMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
-rnaMat_sm_norm <- t(apply(rnaMat_sm, 1, function(x) (x-min(x))/(max(x)-min(x))))
 idx <- which(rowMeans(dorcMat_sm_norm - rnaMat_sm_norm) > 0)
-
 norm_list <- filter_matrix(dmat = dorcMat_sm_norm[idx,rownames(traj)], rmat = rnaMat_sm_norm[idx,rownames(traj)], scale_max_abs_val = 10, gene_corr_cutoff = 0, scaling = 'minmax', ncore = 12)
 ndmat <- norm_list[["ndmat"]]
 nrmat <- norm_list[["nrmat"]]
-  
+
 embedding <- umap
 
 df_time <- calc_neigh(traj, ndmat, nrmat, embedding[rownames(traj),], max_per_cell = k, metric = 'cosine', cutoff = 0.95)
@@ -564,7 +553,6 @@ print(valid_roots)
 
 df_time_corrected$tech = "SCARlink"
 df_time_corrected$diff_pred <- predict_y(df_time_corrected$old_time)
-
 
 ggplot(df_time_corrected, aes(x = old_time, color = tech)) +
   geom_line(aes(y = diff_pred), size = 1) +
@@ -652,8 +640,7 @@ data_sub$pseudotime <- traj[data_sub$cellnames,]$Trajectory
 
 xrange <- max(data$UMAP_1) - min(data$UMAP_1)
 yrange <- max(data$UMAP_2) - min(data$UMAP_2)
-
-
+  
 
 ggplot(data) +
   geom_point(aes(x = UMAP_1, y = UMAP_2), show.legend = FALSE, size = 0.5, alpha = 0.8, color = 'grey90') +
@@ -672,7 +659,6 @@ ggplot(data) +
 ### SCARlink-computed checkpoints for mouse skin
 ```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=5}
 k <- 10
-
 groupDF <- meta %>% dplyr::select(celltype, cellnames) %>%
   column_to_rownames("cellnames")
 
@@ -774,12 +760,10 @@ ggplot(df_time_corrected, aes(x = old_time, color = tech)) +
   ggtitle(paste0("B-spline, k = ", k))
 
 
-
-
 ```
 
 
-### SCARlink-computed chromatin potential for mTEC
+### SCARlink-computed chromatin potential for pituitary
 ```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=5}
 
 color_celltype <- c("Corticotropes" = "#F7962E",
@@ -857,6 +841,7 @@ data_sub$pseudotime <- traj[data_sub$cellnames,]$Trajectory
 xrange <- max(data$UMAP_1) - min(data$UMAP_1)
 yrange <- max(data$UMAP_2) - min(data$UMAP_2)
   
+  
 ggplot(data) +
     geom_point(aes(x = UMAP_1, y = UMAP_2), show.legend = FALSE, size = 0.5, alpha = 0.8, color = 'grey90') +
     geom_point(data = data_sub, aes(x = UMAP_1, y = UMAP_2, color = pseudotime), show.legend = TRUE, size = 0.5, alpha = 0.8) +
@@ -870,7 +855,7 @@ ggplot(data) +
                           oob = scales::oob_squish)
 ```
 
-### SCARlink-computed checkpoints for mTEC
+### SCARlink-computed checkpoints for pituitary
 ```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=5}
 k <- 10
 groupDF <- meta %>% dplyr::select(celltype, cellnames) %>%
