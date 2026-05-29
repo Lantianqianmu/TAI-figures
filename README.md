@@ -10,7 +10,10 @@ All required R packages are indicated in `sessionInfo()` of each markdown file.
 
 ## Preparing codes and data ##
 (1) Clone the repository with `git clone`.  
-(2) Download the source data from BaiduNetdisk. The client for this online storage software can be downloaded from `https://pan.baidu.com/download#win`. Once you have the software installed, click the link below to download the zipped source data. The data can be downloaded/unzipped into anywhere you desire.  
+(2) Download the source data from BaiduNetdisk. The client for this online storage software can be downloaded from `https://pan.baidu.com/download#win`. Once you have the software installed, paste the link below into your browser to download the zipped source data. The data can be downloaded/unzipped into anywhere you desire.  
+```
+https://pan.baidu.com/s/1Ohqzpm5n5Eo5zekgN0PERA?pwd=TAIS
+```
 (3) Unzip __TAI-seq.zip__, which contains 6 subfolders:  
 `mmTAI`: RNA (Seurat RDS files), ATAC (ArchR RDS and arrow files) and TCR (xlsx or tsv files) input files of the mouse LCTA.
 `mmTAI_d8sp`, `mTEC`, `mouse_skin` and `pituitary`: Chromatin potential of public datasets (figure S11-S12).  
