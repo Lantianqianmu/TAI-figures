@@ -16,7 +16,7 @@ https://pan.baidu.com/s/1Ohqzpm5n5Eo5zekgN0PERA?pwd=TAIS
 ```
 (3) Unzip __TAI-seq.zip__, which contains 6 subfolders:  
 `mmTAI`: RNA (Seurat RDS files), ATAC (ArchR RDS and arrow files) and TCR (xlsx or tsv files) input files of the mouse LCTA.  
-`mmTAI_d8sp`, `mTEC`, `mouse_skin` and `pituitary`: Chromatin potential of public datasets (figure S11-S12).  
+`mmTAI_d8sp`, `mTEC`, `mouse_skin` and `pituitary`: Chromatin potential of public datasets (figure S10).  
 `V2_data`: Other source data.
 
 ## Reproducing figures ##
