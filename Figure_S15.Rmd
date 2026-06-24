@@ -1,98 +1,226 @@
 ---
 title: "Figure S15"
-author: "Runze Xie @ institute of biophysics, 28/05/2026"
+author: "Runze Xie @ institute of biophysics, 04/24/2026"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_knit$set(root.dir = '/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
+knitr::opts_knit$set(root.dir = '/media/zeemeeuw/TAI-seq2/TAI-Rmd/V2_data')
 ```
+
 
 ### Loading packages
 ```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE}
-library(ggplot2)
 library(dplyr)
 library(tidyr)
 library(tibble)
+library(stringr)
 library(readr)
-library(openxlsx)
+library(ggplot2)
+library(patchwork)
 library(readxl)
-library(ggrepel)
-source("/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_code/utils.R")
-setwd('/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
+library(openxlsx)
+library(Seurat)
+source("/media/zeemeeuw/TAI-seq2/TAI-Rmd/V2_code/utils.R")
+setwd('/media/zeemeeuw/TAI-seq2/TAI-Rmd/V2_data')
 ```
 
+### Read Seurat object for plotting. 
+#### Critical: change the directory to your working dir accordingly!
+```{r include = TRUE}
+RDSdir <- "/media/zeemeeuw/TAI-seq2/mmTAI/RNA/" # output RDS file dir
+seu <- readRDS(paste0(RDSdir, "lm_merged_overlapped_harmony.rds"))
 
-### TF driver plot
-```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=4, fig.width=4}
+# load calculated gene module score
+load(paste0(RDSdir, "calculated_seurat_gene_module.Rdata"))
 
-d <- read_tsv('source_fig_S15a.tsv')
-ggplot(data = d, aes(x = Corr, y = Enrichment.log10P, color = isSig)) + 
-  geom_hline(yintercept = -log10(0.01), color = "gray60", linetype = "dashed") + 
-  geom_vline(xintercept = c(0), color = "gray60", linetype = "dashed") + 
-  geom_point(aes(size = isSig)) + 
-  theme_classic() + 
-  scale_color_manual(values = c("gray66", "firebrick3")) + 
-  scale_size_manual(values = c(1, 3)) +
-  labs(y = "Enrichment log10 P", x = "DORC-TF Correlation", title = "Klrg1") + 
-  ylim(-10, 15) + 
-  xlim(-1, 1) + 
-  theme(legend.position = "none", 
-        axis.text.x = element_text(hjust = 0.5, vjust = 0.5, size = 10, color = "black"),
-        axis.text.y = element_text(hjust = 0.5, vjust = 0.5, size = 10, color = "black"),
-        plot.title = element_text(hjust = 0.5, face = "italic"), 
-        panel.background = element_rect(fill = NA)) + 
-  coord_fixed(2/25) +
-  ggrepel::geom_text_repel(aes(label = Label), size = 5, color = "black", vjust = 0.5, hjust = 0.5, max.overlaps = 50)
+k <- 10
 
+level_TCR <- c("jurkat", "220", "221", "231", "232", "233", "234", "235", 
+               "236", "237", "238", "271", "272", "273", "274", "275", "213", 
+               "214", "215", "216", "217", "218", "219", "222", "228", "229", 
+               "230", "239", "240", "241", "242", "243", "244", "245", "246", 
+               "247", "248", "249", "250", "251", "252", "253", "254", "255", 
+               "256", "257", "258", "259", "260", "223", "224", "225", "226", 
+               "227", "261", "262", "263", "264", "265", "266", "267", "268", 
+               "269", "270")
 
-
-d <- read_tsv('source_fig_S15b.tsv')
-ggplot(data = d, aes(x = Corr, y = Enrichment.log10P, color = isSig)) + 
-  geom_hline(yintercept = -log10(0.01), color = "gray60", linetype = "dashed") + 
-  geom_vline(xintercept = c(-0.7, 0.7), color = "gray60", linetype = "dashed") + 
-  geom_point(aes(size = isSig)) + 
-  theme_classic() + 
-  scale_color_manual(values = c("gray66", "firebrick3")) + 
-  scale_size_manual(values = c(1, 3)) +
-  labs(y = "Enrichment log10 P", x = "DORC-TF Correlation", title = "Bcl2") + 
-  ylim(-10, 15) + 
-  xlim(-1, 1) + 
-  theme(legend.position = "none", 
-        axis.text.x = element_text(hjust = 0.5, vjust = 0.5, size = 10, color = "black"),
-        axis.text.y = element_text(hjust = 0.5, vjust = 0.5, size = 10, color = "black"),
-        plot.title = element_text(hjust = 0.5, face = "italic"), 
-        panel.background = element_rect(fill = NA)) + 
-  coord_fixed(2/25) +
-  ggrepel::geom_text_repel(aes(label = Label), size = 5, color = "black", vjust = 0.5, hjust = 0.5, max.overlaps = 50)
-
-
-d <- read_tsv('source_fig_S15c.tsv')
-ggplot(data = d, aes(x = Corr, y = Enrichment.log10P, color = isSig)) + 
-  geom_hline(yintercept = -log10(0.01), color = "gray60", linetype = "dashed") + 
-  geom_vline(xintercept = c(-0.7, 0.7), color = "gray60", linetype = "dashed") + 
-  geom_point(aes(size = isSig)) + 
-  theme_classic() + 
-  scale_color_manual(values = c("gray66", "firebrick3")) + 
-  scale_size_manual(values = c(1, 3)) +
-  labs(y = "Enrichment log10 P", x = "DORC-TF Correlation", title = "Havcr2") + 
-  ylim(-10, 15) + 
-  xlim(-1, 1) + 
-  theme(legend.position = "none", 
-        axis.text.x = element_text(hjust = 0.5, vjust = 0.5, size = 10, color = "black"),
-        axis.text.y = element_text(hjust = 0.5, vjust = 0.5, size = 10, color = "black"),
-        plot.title = element_text(hjust = 0.5, face = "italic"), 
-        panel.background = element_rect(fill = NA)) + 
-  coord_fixed(2/25) +
-  ggrepel::geom_text_repel(aes(label = Label), size = 5, color = "black", vjust = 0.5, hjust = 0.5, max.overlaps = 1000)
+color_ttype <- c(
+  "Priming_catch" = "#A6CDE2", 
+  "Priming_slip" = "#1E78B4", 
+  "Primary_catch" = "#FCBF6E", 
+  "Primary_slip" = "#F15F30", 
+  "Recall_catch" = "#88CFA4", 
+  "Recall_slip" = "#007D34"
+)
 
 ```
 
 
+
+### Gene module score and checkpoint score of all cloned TCRs in spleen
+```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=30, fig.width=12}
+meta <- read.xlsx('Lm-TCR4.57-clonotypes-paired in rna.xlsx') %>% 
+  dplyr::mutate(tissue = str_extract(Tissue_time, "(.*)-", group = 1)) %>% 
+  group_by(CDRa_CDRb, timepoint, tissue, barcode) %>% 
+  distinct(CDRa_CDRb, timepoint, tissue, barcode, .keep_all = TRUE) %>% 
+  ungroup() %>% 
+  dplyr::filter(!str_detect(CDRa_CDRb, "_")) %>% 
+  # dplyr::filter(tissue == "Spleen") %>%
+  # dplyr::filter(timepoint == "d8") %>%
+  dplyr::mutate(group = case_match(timepoint, c("d3") ~ "Priming", c("R5", "Y5") ~ "Recall", .default = "Primary")) %>% 
+  group_by(CDRa_CDRb, group) %>% 
+  dplyr::mutate(n = n()) %>% 
+  group_by(group) %>% 
+  dplyr::mutate(total_n = n()) %>% 
+  ungroup()
+
+tibble_tcr <- read_tsv('meta_cloned_TCR.tsv') %>% 
+  dplyr::mutate_at(vars('id'), as.character) %>% 
+  dplyr::mutate_at(vars('id'), ~factor(.x, levels = level_TCR)) %>% 
+  arrange(id) %>% 
+  # dplyr::filter(group == "Primary") %>%
+  dplyr::filter(CDRa_CDRb %in% meta$CDRa_CDRb)
+
+# 
+# dft <- seu@meta.data %>% as_tibble() %>% 
+#   dplyr::select(timepoint, tissue, cell_module, chain1, chain2, cellnames) 
+# d1 <- dft %>% dplyr::select(timepoint, tissue, cell_module, chain1, cellnames) %>% rename_with(~c("timepoint", "tissue", "cell_module", "chain", "cellnames"))
+# d2 <- dft %>% dplyr::select(timepoint, tissue, cell_module, chain2, cellnames) %>% rename_with(~c("timepoint", "tissue", "cell_module", "chain", "cellnames"))
+# dft <- bind_rows(d1, d2) %>% 
+#   dplyr::filter(tissue == "Spleen") %>%  ### filter sp
+#   dplyr::filter(!is.na(chain)) %>% 
+#   group_by(timepoint, chain) %>% 
+#   dplyr::mutate(count_timepoint = n())
+
+dft <- read.xlsx('Lm-TCR4.57-clonotypes-paired in rna.xlsx') %>% 
+  dplyr::mutate(tissue = str_extract(Tissue_time, "(.*)-", group = 1)) %>% 
+  group_by(CDRa_CDRb, timepoint, tissue, barcode) %>%
+  distinct(CDRa_CDRb, timepoint, tissue, barcode, .keep_all = TRUE) %>%
+  slice_head(n = 2) %>% 
+  group_by(CDRa_CDRb) %>% 
+  dplyr::mutate(count = n()) %>% 
+  left_join(seu@meta.data[,c('cell_module', 'cellnames')], by = join_by('barcode' == 'cellnames')) %>% 
+  dplyr::select(timepoint, tissue, cell_module, CDRa_CDRb, barcode) %>% 
+  rename_with(~c("timepoint", "tissue", "cell_module", "chain", "cellnames")) %>% 
+  dplyr::filter(tissue == "Spleen") %>%  ### filter sp
+  dplyr::filter(!is.na(chain)) %>% 
+  group_by(timepoint, chain) %>% 
+  dplyr::mutate(count_timepoint = n())
+
+dft_d8 <- dft %>% 
+  # dplyr::filter(timepoint == "d8") %>% 
+  dplyr::filter(chain %in% tibble_tcr$CDRa_CDRb) %>% 
+  inner_join(tibble_tcr, by = join_by("chain" == "CDRa_CDRb")) %>% 
+  group_by(chain) %>% 
+  dplyr::mutate(EMTratio = sum(cell_module %in% c("Effector-memory_transition_1", "Effector-memory_transition_2", "Effector-memory_transition_3")) / n()) %>% 
+  dplyr::mutate(EFFratio = 1 - EMTratio) %>% 
+  dplyr::mutate(MEratio = sum(cell_module %in% c("Effector-memory_transition_1", "Effector-memory_transition_2", "Effector-memory_transition_3")) / sum(cell_module %in% c("Effector_1", "Effector_2"))) %>% 
+  dplyr::mutate(group = case_when(sum(cell_module %in% c("Effector_1", "Effector_2"))/n() > 0.7 ~ "Eff biased",
+                                  sum(cell_module %in% c("Effector-memory_transition_1", "Effector-memory_transition_2", "Effector-memory_transition_3"))/n() > 0.7 ~ "EMT biased",
+                                  .default = "no bias")) %>% 
+  dplyr::mutate(has_memory = case_when(sum(cell_module %in% c("Memory_1", "Memory_2", "Memory_3")) > 0 ~ "Yes",
+                                       .default = "No"))
+dft_d8$group <- factor(dft_d8$group, levels = c("Eff biased", "no bias", "EMT biased")) 
+dft_d8 <- dft_d8 %>% arrange(MEratio)
+dft_d8$chain <- factor(dft_d8$chain, levels = unique(dft_d8$chain))
+dft_d8$id <- factor(dft_d8$id, levels = unique(dft_d8$id))
+
+df_gm <- module_score_cd8[dft_d8$cellnames,] %>% 
+  as_tibble() 
+
+
+dft_d8 <- dft_d8 %>%
+  bind_cols(df_gm)
+
+
+
+df_time_corrected_sp_pri <- readRDS(paste0(RDSdir, "chromatin_checkpoint_", "Spleen.trajectory", "_k_", k, ".rds"))
+df_time_corrected_sp_pri <- df_time_corrected_sp_pri %>% 
+  dplyr::filter(cellnames %in% dft_d8$cellnames) %>% 
+  dplyr::mutate(diff_raw = -diff,
+                diff_spline = -diff_pred,
+                dt_raw_cp3 = new_time - 55.912739,
+                dt_spline_cp3 = old_time + diff_pred - 55.912739,
+                old_time_to_cp1 = old_time - 2.520776,
+                old_time_to_cp2 = old_time - 27.545472,
+                old_time_to_cp3 = old_time - 55.912739,
+                old_time_to_cp4 = old_time - 97.637571) 
+dft_d8_sp_pri <- dft_d8 %>% dplyr::filter(phase != "Recall")
+data_time_sp_pri <- df_time_corrected_sp_pri %>% inner_join(dft_d8_sp_pri, by = "cellnames") %>% 
+  dplyr::mutate_at(vars(bond), ~factor(.x, levels = c("catch", "slip"))) 
+
+df_time_corrected_sp_re <- readRDS(paste0(RDSdir, "chromatin_checkpoint_", "Spleen.trajectory_re", "_k_", k, ".rds"))
+df_time_corrected_sp_re <- df_time_corrected_sp_re %>% 
+  dplyr::filter(cellnames %in% dft_d8$cellnames) %>% 
+  dplyr::mutate(diff_raw = -diff,
+                diff_spline = -diff_pred,
+                dt_raw_cp3 = new_time - 51.272982,
+                dt_spline_cp3 = old_time + diff_pred - 51.272982,
+                old_time_to_cp1 = old_time - 1.940917,
+                old_time_to_cp2 = old_time - 8.085136,
+                old_time_to_cp3 = old_time - 51.272982,
+                old_time_to_cp4 = old_time - 98.712833)  
+
+dft_d8_sp_re <- dft_d8 %>% dplyr::filter(phase == "Recall")
+data_time_sp_re <- df_time_corrected_sp_re %>% inner_join(dft_d8_sp_re, by = "cellnames") %>% 
+  dplyr::mutate_at(vars(bond), ~factor(.x, levels = c("catch", "slip"))) 
+
+
+data_time <- bind_rows(data_time_sp_pri, data_time_sp_re)
+
+
+data_56_sort <- data_time %>% 
+  dplyr::mutate_at(vars(bond), ~factor(.x, levels = c("catch", "slip"))) %>% 
+  dplyr::mutate_at(vars(phase), ~factor(.x, levels = c("Priming", "Primary", "Recall"))) %>% 
+  dplyr::mutate(type = paste0(phase, "_", bond)) %>% 
+  dplyr::mutate_at(vars(type), ~factor(.x, levels = c("Priming_catch", "Priming_slip", "Primary_catch", "Primary_slip", "Recall_catch", "Recall_slip"))) %>% 
+  group_by(id) %>% 
+  dplyr::mutate(avg_newtime = mean(new_time, na.rm = TRUE)) %>% 
+  arrange(type, avg_newtime) 
+tcr_order <- as.character(unique(data_56_sort$id))
+data_56_sort <- data_56_sort %>% dplyr::mutate_at(vars(id), ~factor(.x, levels = tcr_order))
+    
+
+plist <- list()
+for (metric in c("Cytotoxicity", "Chemokine/Chemokine receptor", "Adhesion")) {
+  p <- ggplot(data_56_sort, aes(x = id, y = !!sym(metric), fill = type)) +
+    theme_classic() +
+    # geom_jitter(size = 1, alpha = 1, width = 0.2) +
+    geom_boxplot(width = 0.8, color = "black", show.legend = TRUE, outlier.size = 0.1) +
+    # ylim(-25, 25) +
+    theme(panel.grid = element_blank(),
+          axis.text.x = element_text(size = 10, color = "black", angle = 45, hjust = 1),
+          axis.text.y = element_text(size = 10, color = "black"),
+          axis.title.x = element_text(size = 13),
+          axis.title.y = element_text(size = 13)) +
+    scale_fill_manual(values = color_ttype)
+  plist[[metric]] <- p
+}
+
+for (metric in c("old_time_to_cp1", "old_time_to_cp2", "old_time_to_cp3", "old_time_to_cp4")) {
+  p <- ggplot(data_56_sort, aes(x = id, y = !!sym(metric), fill = type)) +
+    theme_classic() +
+    # geom_jitter(size = 1, alpha = 1, width = 0.2) +
+    geom_boxplot(width = 0.8, color = "black", show.legend = TRUE, outlier.size = 0.1) +
+    geom_hline(yintercept = 0, linetype = 2, color = 'grey') +
+    ylim(-100, 100) +
+    theme(panel.grid = element_blank(),
+          axis.text.x = element_text(size = 10, color = "black", angle = 45, hjust = 1),
+          axis.text.y = element_text(size = 10, color = "black"),
+          axis.title.x = element_text(size = 13),
+          axis.title.y = element_text(size = 13)) +
+    scale_fill_manual(values = color_ttype)
+  plist[[metric]] <- p
+}
+wrap_plots(plist, ncol = 1)
+    
+```
 
 
 ```{r eval=TRUE, include=TRUE}
 sessionInfo()
 ```
+
 
 

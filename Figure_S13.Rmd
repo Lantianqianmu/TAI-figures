@@ -1,404 +1,256 @@
 ---
 title: "Figure S13"
-author: "Runze Xie @ institute of biophysics, 28/05/2026"
+author: "Runze Xie @ institute of biophysics, 04/24/2026"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_knit$set(root.dir = '/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
+knitr::opts_knit$set(root.dir = '/media/zeemeeuw/TAI-seq2/TAI-Rmd/V2_data')
 ```
 
 ### Loading packages
 ```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE}
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(readr)
 library(ggplot2)
 library(patchwork)
-library(dplyr)
-library(tibble)
-library(readr)
-library(ArchR)
-library(Seurat)
-library(openxlsx)
+library(ggrepel)
 library(readxl)
-library(UpSetR)
-library(tidyr)
-source("/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_code/utils.R")
-setwd('/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
+library(openxlsx)
+library(ggbreak)
+library(ggbeeswarm)
+source("/media/zeemeeuw/TAI-seq2/TAI-Rmd/V2_code/utils.R")
+setwd('/media/zeemeeuw/TAI-seq2/TAI-Rmd/V2_data')
 ```
-
-### Read Seurat and ArchR object for plotting. 
-#### Critical: change the directory to your working dir accordingly!
-The DORC matrix was called with FigR. Here we provide called peak-GEX correlation dataframe and MAGIC-smoothed DORC/RNA matrix.
-```{r include = TRUE}
-RDSdir <- "/media/zeemeeuw/TAI-seq/mmTAI/RNA/" # output RDS file dir
-ATACdir <- "/media/zeemeeuw/TAI-seq/mmTAI/ATAC/overlapped_harmony/" # ATAC root dir
-seu <- readRDS(paste0(RDSdir, "lm_merged_overlapped_harmony.rds"))
-proj <- loadArchRProject(ATACdir)
-
-# load smoothed DORC and RNA matrix
-load(paste0(RDSdir, "lm_merged_overlapped_harmony_mat_smoothed.RData"))
-
-# load checkpoint information
-load(paste0(RDSdir, "Spleen_DORC_RNA_residual_checkpoint.RData"))
-
-# load peak-GEX correlation dataframe
-load(paste0(RDSdir, "lm_merged_overlapped_harmony_DORC3.RData"))
-gpcorr.use <- gpcorr.use_raw[gpcorr.use_raw$rObs > 0,]
-gpcorr.use <- gpcorr.use[gpcorr.use$pvalZ <= 0.05,]
-dorcGenes <- sort(unique(gpcorr.use$Gene))
-```
-
 
 ### Set parameters for plotting
 ```{r include = TRUE}
-mmjoint_colors <- c("Quiescent" = "#bbdefb", 
-                    "Priming_1" =  "#519ec6", 
-                    "Priming_2" = "#3971ff",
-                    "Activation_1" = "#a9df91", 
-                    "Activation_2" = "#7eca72", 
-                    "Activation_3" = "#48b352", 
-                    "Effector_1" = "#ffb669", 
-                    "Effector_2" = "#ff882e", 
-                    "Effector-memory_transition_1" = "#cda7c7",
-                    "Effector-memory_transition_2" = "#9e79b6",
-                    "Effector-memory_transition_3" = "#7c4d9f",
-                    "Memory_1" = "#ef999c", 
-                    "Memory_2" = "#eb5e63",
-                    "Memory_3" = "#e53a46")
-time_colors <-  c("WT" = "#ABD8E6", "d3" = "#35a153", "d5" = "#1f6933", "d8" = "#f26a11", "d14" = "#B22222" , "d30" = "#B17BA6", "R5" = "#85B0FF", "Y5" = "#3648A2")
-tissue_colors <-  c("Spleen" = "#36A23D", "Ln" = "#2884E7", "Liver" = "#817ab9", "Blood" = "#EE3B00")
-line_colors <- c("DORC" = "#314A8C",
-                 "Motif" = "#D03542",
-                 "RNA" = "#F6CE48")
-```
+color_phase <- c("Ctrl" = "grey", 
+                 "Priming" = "#A6CDE2", 
+                 "Primary" = "#F47E1F" , 
+                 "Recall" = "#74C476")
 
 
+level_TCR <- c("jurkat", "220", "221", "231", "232", "233", "234", "235", 
+               "236", "237", "238", "271", "272", "273", "274", "275", "213", 
+               "214", "215", "216", "217", "218", "219", "222", "228", "229", 
+               "230", "239", "240", "241", "242", "243", "244", "245", "246", 
+               "247", "248", "249", "250", "251", "252", "253", "254", "255", 
+               "256", "257", "258", "259", "260", "223", "224", "225", "226", 
+               "227", "261", "262", "263", "264", "265", "266", "267", "268", 
+               "269", "270")
 
-### Upset plot
-```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=8}
 
-
-gname <- lapply(cp_list, function(l){rownames(l$dorc)})
-df <- tibble(gene = gname$cp1_predi, count_1 = 1)
-for (i in 2:8) {
-  cname <- paste0("count_", i)
-  mdf <- tibble(gene = gname[[i]], !!cname := 1)
-  df <- df %>% dplyr::full_join(mdf, by = "gene")
-}
-df <- df %>% replace(is.na(.), 0)
-df <- df %>% tibble::column_to_rownames(var = "gene")
-colnames(df) <- c(
-  "checkpoint_1_predisposition", "checkpoint_1_maintenance",
-  "checkpoint_2_predisposition", "checkpoint_2_maintenance", 
-  "checkpoint_3_predisposition", "checkpoint_3_maintenance",  
-  "checkpoint_4_predisposition", "checkpoint_4_maintenance"
-)
-
-upset(df,
-      nsets = 8,
-      sets = rev(colnames(df) ),
-      nintersects= 100,
-      keep.order = TRUE,
-      main.bar.color = "#8f1f1e",
-      matrix.color="black", 
-      sets.bar.color= "#85B0FF",
-      set_size.show = TRUE, 
-      mb.ratio = c(0.5, 0.5))
+color_TCR <- c("grey70",
+               colorRampPalette(c("#B6BFEB", "#8694D8", "#5668C3", "#3648A2"))(15),
+               colorRampPalette(c("#F7B4B4", "#ED8080", "#DF4A4A", "#BE2A2A"))(33),
+               colorRampPalette(c("#B6EBBA", "#86D88B", "#56C35D", "#36A23D"))(15))
+names(color_TCR) <- level_TCR
 
 
 ```
 
+### Clonal expansion of selected TCRs
+```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=17}
 
+meta <- read.xlsx('Lm-TCR4.57-clonotypes-paired in rna.xlsx') %>% 
+  dplyr::mutate(tissue = str_extract(Tissue_time, "(.*)-", group = 1)) %>% 
+  group_by(CDRa_CDRb, timepoint, tissue, barcode) %>% 
+  distinct(CDRa_CDRb, timepoint, tissue, barcode, .keep_all = TRUE) %>% 
+  ungroup() %>% 
+  dplyr::filter(!str_detect(CDRa_CDRb, "_")) %>% 
+  dplyr::filter(tissue == "Spleen") %>%
+  dplyr::filter(timepoint != "WT") %>%
+  dplyr::filter(timepoint %in% c("d3", "d8", "R5")) %>%
+  dplyr::mutate(group = case_match(timepoint, c("d3") ~ "Priming", c("R5", "Y5") ~ "Recall", .default = "Primary")) %>% 
+  group_by(CDRa_CDRb, group) %>% 
+  dplyr::mutate(n = n()) %>% 
+  group_by(group) %>% 
+  dplyr::mutate(total_n = n()) %>% 
+  ungroup()
 
+tcr <- read_tsv("61_TCR_tet_coculture_BFP.tsv")
 
-### DORC-RNA line plot, Ln, primary
-```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=20, fig.width=8}
 plist <- list()
-cells <- proj$cellNames[!is.na(proj$Ln.trajectory)]
-pseudotime <- proj$Ln.trajectory[!is.na(proj$Ln.trajectory)]
-for(gene in c("Ccr7", "St6gal1", "Klf3", "Gzmb", "Mki67", "Klrg1", "Tbx21", "Ly6e", "Myb", "Etv3", "Ccr9")){
-  data_dorc <- data.frame(score = dorcMat_sm_norm[gene, cells], pseudotime = pseudotime, type = "DORC")
-  data_rna <- data.frame(score = rnaMat_sm_norm[gene, cells], pseudotime = pseudotime, type = "RNA")
+for(phase in c("Priming", "Primary", "Recall")){
+  meta_phase <- meta %>% dplyr::filter(group == phase) %>% 
+    dplyr::select(CDRa_CDRb, group)
+  tcr_phase <- tcr %>% dplyr::filter(group == phase)
   
-  DORC_fit <- loess(score ~ pseudotime, data = data_dorc, span = 0.2)
-  data_dorc$smooth <- DORC_fit$fitted
-  RNA_fit <- loess(score ~ pseudotime, data = data_rna, span = 0.2)
-  data_rna$smooth <- RNA_fit$fitted
+  data <- meta_phase %>% 
+    left_join(tcr_phase, by = join_by(CDRa_CDRb, group)) %>% 
+    group_by(CDRa_CDRb) %>% 
+    dplyr::mutate(n = n()) %>% 
+    arrange(dplyr::desc(n), dplyr::desc(id)) %>% 
+    distinct() %>% 
+    ungroup() %>% 
+    dplyr::mutate(x = row_number()) %>% 
+    dplyr::mutate(selected = if_else(is.na(id), "N", "Y")) %>% 
+    arrange(selected)
   
-  data <- rbind(data_dorc, data_rna)
-  data$type <- factor(data$type, levels = c("DORC", "RNA"))
+ 
+  p1 <- ggplot(data, aes(x = x, y = n, fill = selected, color = selected, shape = selected, size = n)) +
+      # scale_x_continuous() +
+      scale_x_log10(limits = c(1, 500)) +
+      scale_y_log10() +
+      geom_point() +
+      scale_shape_manual(values = c(16, 21)) +
+      scale_size_continuous(range = c(2, 5)) +
+      theme_bw() +
+      theme(axis.text.x = element_text(size = 8, color = "black"),
+            axis.text.y = element_text(size = 8, color = "black"),
+            axis.title.x = element_text(size = 13),
+            axis.title.y = element_text(size = 13)) +
+      scale_fill_manual(values = c("Y" = "#FF851D", "N" = "grey85")) +
+      scale_color_manual(values = c("Y" = "black", "N" = "grey85"))  +
+      ggtitle(phase)
   
-  p <- ggplot(data) +
-    theme_bw() +
-    # geom_point(aes(x = pseudotime, y = score, color = type), size = 0.5, alpha = 0.1, shape = 16) +
-    geom_line(aes(x = pseudotime, y = smooth, color = type), size = 1) +
-    # geom_smooth(aes(x = pseudotime, y = smooth, color = type), method = "loess", span = 0.2, size = 1, se = FALSE) +
-    scale_color_manual(values = line_colors) +
-    scale_x_continuous(limits = c(0, 100), expand = c(0.025, 0.025)) +
-    scale_y_continuous(limits = c(0, 1), expand = c(0.025, 0.025)) +
-    theme(panel.grid = element_blank(),
-          axis.text.x = element_text(size = 10, color = "black"),
-          axis.text.y = element_text(size = 10, color = "black"),
-          axis.title.x = element_text(size = 13),
-          axis.title.y = element_text(size = 13)) +
-    ggtitle(gene) +
-    theme(plot.title = element_text(hjust = 0.5)) +
-    coord_fixed(50) +
-    ylab("Normalized counts") +
-    xlab("Pseudotime")
-  plist <- c(plist, list(p))
+  plist <- c(plist, list(p1))
 }
-wrap_plots(plist, ncol = 2)
+wrap_plots(plist, nrow = 1)
+  
+```
+
+### Tet MFI and %tet+ of selected TCRs
+```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=17}
+
+data <- read_tsv('source_fig_S17e.tsv')
+
+data_summary <- data %>% group_by(TCR, x) %>% 
+  dplyr::summarise(group_MFI = mean(mean_MFI), 
+                   group_prop = mean(mean_prop),
+                   sem_MFI = plotrix::std.error(mean_MFI),
+                   sem_prop = plotrix::std.error(mean_prop))
+
+barwidth <- 0.7
+# MFI
+ggplot() +
+  geom_errorbar(data = data_summary, aes(x = x, ymax = group_MFI + sem_MFI, ymin = group_MFI - sem_MFI), width = barwidth/2, show.legend = FALSE) +
+  geom_bar(data = data_summary, aes(x = x, y = group_MFI, fill = TCR), stat = 'identity', width = barwidth, alpha = 1, show.legend = FALSE) +
+  geom_jitter(data = data, aes(x = x, y = mean_MFI, fill = TCR), shape = 21, size = 1, width = barwidth/4, show.legend = FALSE) +
+  theme_classic() +
+  scale_fill_manual(values = color_TCR) +
+  xlab(NULL) +
+  ylab("Tet MFI") +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(size = 8, color = "black", hjust = 1, angle = 45),
+        axis.text.y = element_text(size = 8, color = "black"),
+        axis.title.x = element_text(size = 13),
+        axis.title.y = element_text(size = 13)) +
+  scale_x_continuous(breaks = 1:nrow(data_summary), labels = levels(data$TCR), expand = expansion(mult = c(0.01, 0.01))) +
+  scale_y_log10(expand = expansion(mult = c(0, 0.05))) +
+  geom_hline(yintercept = data_summary %>% dplyr::filter(TCR == "jurkat") %>% pull(group_MFI), color = "black", linetype = 2) +
+  scale_y_break(c(20,80), space = 0.1, scales = 8)
+
+
+
+ggplot() +
+  geom_errorbar(data = data_summary, aes(x = x, ymax = group_prop + sem_prop, ymin = group_prop - sem_prop), width = barwidth/2, show.legend = FALSE) +
+  geom_bar(data = data_summary, aes(x = x, y = group_prop, fill = TCR), stat = 'identity', width = barwidth, alpha = 1, show.legend = FALSE) +
+  geom_jitter(data = data, aes(x = x, y = mean_prop, fill = TCR), shape = 21, size = 1, width = barwidth/4, show.legend = FALSE) +
+  theme_classic() +
+  scale_fill_manual(values = color_TCR) +
+  xlab(NULL) +
+  ylab("% Tet") +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(size = 8, color = "black", hjust = 1, angle = 45),
+        axis.text.y = element_text(size = 8, color = "black"),
+        axis.title.x = element_text(size = 13),
+        axis.title.y = element_text(size = 13)) +
+  scale_x_continuous(breaks = 1:nrow(data_summary), labels = levels(data$TCR), expand = expansion(mult = c(0.01, 0.01))) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.05))) 
+  
+```
+
+### T test for Tet MFI and %tet+ of selected TCRs in different phase
+```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=5}
+
+
+data <- read_tsv('source_fig_S17f.tsv') %>% 
+  dplyr::mutate_at(vars(phase), ~factor(.x, levels = c("Ctrl", "Priming", "Primary", "Recall")))
+
+comb <- t(combn(levels(data$phase), 2)) %>% as_tibble()
+df_sig <- lapply(1:nrow(comb), function(i) {
+  guse <- comb[i,]
+  t <- wilcox.test(x = data %>% dplyr::filter(phase == guse$V1) %>% pull(log_MFI),
+              y = data %>% dplyr::filter(phase == guse$V2) %>% pull(log_MFI), paired = FALSE, var.equal = FALSE)
+  c <- tibble(p = t$p.value, 
+              xmin = data %>% dplyr::filter(phase == guse$V1) %>% pull(x) %>% unique(),
+              xmax = data %>% dplyr::filter(phase == guse$V2) %>% pull(x) %>% unique(),
+              x_min_group = data %>% dplyr::filter(phase == guse$V1) %>% pull(phase) %>% unique(),
+              x_max_group = data %>% dplyr::filter(phase == guse$V2) %>% pull(phase) %>% unique(),
+              y = max(data$log_MFI)/100*(70 + i*3))
+}) %>% Reduce("rbind", .)
+
+
+calc_boxplot_stats <- function(x) {
+  qs <- quantile(x, probs = c(0.25, 0.5, 0.75), na.rm = TRUE)
+  iqr <- qs[3] - qs[1]
+  lower_whisker <- max(min(x, na.rm = TRUE), qs[1] - 1.5 * iqr)
+  upper_whisker <- min(max(x, na.rm = TRUE), qs[3] + 1.5 * iqr)
+  
+  stats <- log10(c(lower_whisker, qs[1], qs[2], qs[3], upper_whisker))
+  names(stats) <- c("ymin", "lower", "middle", "upper", "ymax")
+  return(stats)
+}
+
+ggplot(data, aes(x = phase, y = mean_MFI)) + 
+  stat_summary(
+    fun.data = function(x) calc_boxplot_stats(x),
+    geom = "boxplot"
+  ) +
+  geom_jitter(aes(fill = phase, y = log_MFI), shape = 21, size = 2, alpha = 1, width = 0.2) +
+  scale_fill_manual(values = color_phase) +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(size = 10, color = "black"),
+        axis.text.y = element_text(size = 10, color = "black"),
+        axis.title.x = element_text(size = 13),
+        axis.title.y = element_text(size = 13)) +
+  geom_segment(data = df_sig, aes(x = xmin, xend = xmax, y = y, yend = y)) +
+  geom_text(data = df_sig, aes(x = (xmin + xmax) / 2, y = y, label = p), size = 3, vjust = 0) +
+  coord_cartesian(ylim = c(1.8, 4)) +
+  guides(fill = guide_legend(override.aes = list(size = 5)))
+
+
+
+data <- read_tsv('source_fig_S17g.tsv') %>% 
+  dplyr::mutate_at(vars(phase), ~factor(.x, levels = c("Ctrl", "Priming", "Primary", "Recall")))
+
+comb <- t(combn(levels(data$phase), 2)) %>% as_tibble()
+df_sig <- lapply(1:nrow(comb), function(i) {
+  guse <- comb[i,]
+  t <- wilcox.test(x = data %>% dplyr::filter(phase == guse$V1) %>% pull(mean_prop),
+              y = data %>% dplyr::filter(phase == guse$V2) %>% pull(mean_prop), paired = FALSE, var.equal = FALSE)
+  c <- tibble(p = t$p.value, 
+              xmin = data %>% dplyr::filter(phase == guse$V1) %>% pull(x) %>% unique(),
+              xmax = data %>% dplyr::filter(phase == guse$V2) %>% pull(x) %>% unique(),
+              x_min_group = data %>% dplyr::filter(phase == guse$V1) %>% pull(phase) %>% unique(),
+              x_max_group = data %>% dplyr::filter(phase == guse$V2) %>% pull(phase) %>% unique(),
+              y = max(data$mean_prop)/100*(70 + i*3))
+}) %>% Reduce("rbind", .)
+
+
+ggplot(data, aes(x = phase, y = mean_prop)) + 
+  geom_boxplot() +
+  geom_beeswarm(aes(fill = phase), shape = 21,  cex = 2, size = 2, alpha = 1) +
+  scale_fill_manual(values = color_phase) +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(size = 10, color = "black"),
+        axis.text.y = element_text(size = 10, color = "black"),
+        axis.title.x = element_text(size = 13),
+        axis.title.y = element_text(size = 13)) +
+  scale_y_continuous(breaks = c(25, 50, 100), limits = c(0, 100)) +
+  geom_segment(data = df_sig, aes(x = xmin, xend = xmax, y = y, yend = y)) +
+  geom_text(data = df_sig, aes(x = (xmin + xmax) / 2, y = y, label = p), size = 3, vjust = 0) +
+  guides(fill = guide_legend(override.aes = list(size = 5))) 
   
 ```
 
 
-### DORC-RNA line plot, Liver, primary
-```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=8}
-plist <- list()
-cells <- proj$cellNames[!is.na(proj$Liver.trajectory)]
-pseudotime <- proj$Liver.trajectory[!is.na(proj$Liver.trajectory)]
-for(gene in c("Gzmb", "Mki67", "Ifrd1", "Tnfaip3")){
-  data_dorc <- data.frame(score = dorcMat_sm_norm[gene, cells], pseudotime = pseudotime, type = "DORC")
-  data_rna <- data.frame(score = rnaMat_sm_norm[gene, cells], pseudotime = pseudotime, type = "RNA")
-  
-  DORC_fit <- loess(score ~ pseudotime, data = data_dorc, span = 0.2)
-  data_dorc$smooth <- DORC_fit$fitted
-  RNA_fit <- loess(score ~ pseudotime, data = data_rna, span = 0.2)
-  data_rna$smooth <- RNA_fit$fitted
-  
-  data <- rbind(data_dorc, data_rna)
-  data$type <- factor(data$type, levels = c("DORC", "RNA"))
-  
-  p <- ggplot(data) +
-    theme_bw() +
-    # geom_point(aes(x = pseudotime, y = score, color = type), size = 0.5, alpha = 0.1, shape = 16) +
-    geom_line(aes(x = pseudotime, y = smooth, color = type), size = 1) +
-    # geom_smooth(aes(x = pseudotime, y = smooth, color = type), method = "loess", span = 0.2, size = 1, se = FALSE) +
-    scale_color_manual(values = line_colors) +
-    scale_x_continuous(limits = c(0, 100), expand = c(0.025, 0.025)) +
-    scale_y_continuous(limits = c(0, 1), expand = c(0.025, 0.025)) +
-    theme(panel.grid = element_blank(),
-          axis.text.x = element_text(size = 10, color = "black"),
-          axis.text.y = element_text(size = 10, color = "black"),
-          axis.title.x = element_text(size = 13),
-          axis.title.y = element_text(size = 13)) +
-    ggtitle(gene) +
-    theme(plot.title = element_text(hjust = 0.5)) +
-    coord_fixed(50) +
-    ylab("Normalized counts") +
-    xlab("Pseudotime")
-  plist <- c(plist, list(p))
-}
-wrap_plots(plist, ncol = 2)
-  
-```
-
-### DORC-RNA line plot, Blood, primary
-```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=8}
-plist <- list()
-cells <- proj$cellNames[!is.na(proj$Blood.trajectory)]
-pseudotime <- proj$Blood.trajectory[!is.na(proj$Blood.trajectory)]
-for(gene in c("Gzmb", "Mki67", "Ifrd1", "Tnfaip3")){
-  data_dorc <- data.frame(score = dorcMat_sm_norm[gene, cells], pseudotime = pseudotime, type = "DORC")
-  data_rna <- data.frame(score = rnaMat_sm_norm[gene, cells], pseudotime = pseudotime, type = "RNA")
-  
-  DORC_fit <- loess(score ~ pseudotime, data = data_dorc, span = 0.2)
-  data_dorc$smooth <- DORC_fit$fitted
-  RNA_fit <- loess(score ~ pseudotime, data = data_rna, span = 0.2)
-  data_rna$smooth <- RNA_fit$fitted
-  
-  data <- rbind(data_dorc, data_rna)
-  data$type <- factor(data$type, levels = c("DORC", "RNA"))
-  
-  p <- ggplot(data) +
-    theme_bw() +
-    # geom_point(aes(x = pseudotime, y = score, color = type), size = 0.5, alpha = 0.1, shape = 16) +
-    geom_line(aes(x = pseudotime, y = smooth, color = type), size = 1) +
-    # geom_smooth(aes(x = pseudotime, y = smooth, color = type), method = "loess", span = 0.2, size = 1, se = FALSE) +
-    scale_color_manual(values = line_colors) +
-    scale_x_continuous(limits = c(0, 100), expand = c(0.025, 0.025)) +
-    scale_y_continuous(limits = c(0, 1), expand = c(0.025, 0.025)) +
-    theme(panel.grid = element_blank(),
-          axis.text.x = element_text(size = 10, color = "black"),
-          axis.text.y = element_text(size = 10, color = "black"),
-          axis.title.x = element_text(size = 13),
-          axis.title.y = element_text(size = 13)) +
-    ggtitle(gene) +
-    theme(plot.title = element_text(hjust = 0.5)) +
-    coord_fixed(50) +
-    ylab("Normalized counts") +
-    xlab("Pseudotime")
-  plist <- c(plist, list(p))
-}
-wrap_plots(plist, ncol = 2)
-  
-```
-
-### DORC-RNA line plot, Spleen, recall
-```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=8}
-plist <- list()
-cells <- proj$cellNames[!is.na(proj$Spleen.trajectory_re)]
-pseudotime <- proj$Spleen.trajectory_re[!is.na(proj$Spleen.trajectory_re)]
-for(gene in c("Gzmb", "Mki67", "Ifrd1", "Tnfaip3")){
-  data_dorc <- data.frame(score = dorcMat_sm_norm[gene, cells], pseudotime = pseudotime, type = "DORC")
-  data_rna <- data.frame(score = rnaMat_sm_norm[gene, cells], pseudotime = pseudotime, type = "RNA")
-  
-  DORC_fit <- loess(score ~ pseudotime, data = data_dorc, span = 0.2)
-  data_dorc$smooth <- DORC_fit$fitted
-  RNA_fit <- loess(score ~ pseudotime, data = data_rna, span = 0.2)
-  data_rna$smooth <- RNA_fit$fitted
-  
-  data <- rbind(data_dorc, data_rna)
-  data$type <- factor(data$type, levels = c("DORC", "RNA"))
-  
-  p <- ggplot(data) +
-    theme_bw() +
-    # geom_point(aes(x = pseudotime, y = score, color = type), size = 0.5, alpha = 0.1, shape = 16) +
-    geom_line(aes(x = pseudotime, y = smooth, color = type), size = 1) +
-    # geom_smooth(aes(x = pseudotime, y = smooth, color = type), method = "loess", span = 0.2, size = 1, se = FALSE) +
-    scale_color_manual(values = line_colors) +
-    scale_x_continuous(limits = c(0, 100), expand = c(0.025, 0.025)) +
-    scale_y_continuous(limits = c(0, 1), expand = c(0.025, 0.025)) +
-    theme(panel.grid = element_blank(),
-          axis.text.x = element_text(size = 10, color = "black"),
-          axis.text.y = element_text(size = 10, color = "black"),
-          axis.title.x = element_text(size = 13),
-          axis.title.y = element_text(size = 13)) +
-    ggtitle(gene) +
-    theme(plot.title = element_text(hjust = 0.5)) +
-    coord_fixed(50) +
-    ylab("Normalized counts") +
-    xlab("Pseudotime")
-  plist <- c(plist, list(p))
-}
-wrap_plots(plist, ncol = 2)
-  
-```
-
-
-### DORC-RNA line plot, Ln, recall
-```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=8}
-plist <- list()
-cells <- proj$cellNames[!is.na(proj$Ln.trajectory_re)]
-pseudotime <- proj$Ln.trajectory_re[!is.na(proj$Ln.trajectory_re)]
-for(gene in c("Gzmb", "Mki67", "Ifrd1", "Tnfaip3")){
-  data_dorc <- data.frame(score = dorcMat_sm_norm[gene, cells], pseudotime = pseudotime, type = "DORC")
-  data_rna <- data.frame(score = rnaMat_sm_norm[gene, cells], pseudotime = pseudotime, type = "RNA")
-  
-  DORC_fit <- loess(score ~ pseudotime, data = data_dorc, span = 0.2)
-  data_dorc$smooth <- DORC_fit$fitted
-  RNA_fit <- loess(score ~ pseudotime, data = data_rna, span = 0.2)
-  data_rna$smooth <- RNA_fit$fitted
-  
-  data <- rbind(data_dorc, data_rna)
-  data$type <- factor(data$type, levels = c("DORC", "RNA"))
-  
-  p <- ggplot(data) +
-    theme_bw() +
-    # geom_point(aes(x = pseudotime, y = score, color = type), size = 0.5, alpha = 0.1, shape = 16) +
-    geom_line(aes(x = pseudotime, y = smooth, color = type), size = 1) +
-    # geom_smooth(aes(x = pseudotime, y = smooth, color = type), method = "loess", span = 0.2, size = 1, se = FALSE) +
-    scale_color_manual(values = line_colors) +
-    scale_x_continuous(limits = c(0, 100), expand = c(0.025, 0.025)) +
-    scale_y_continuous(limits = c(0, 1), expand = c(0.025, 0.025)) +
-    theme(panel.grid = element_blank(),
-          axis.text.x = element_text(size = 10, color = "black"),
-          axis.text.y = element_text(size = 10, color = "black"),
-          axis.title.x = element_text(size = 13),
-          axis.title.y = element_text(size = 13)) +
-    ggtitle(gene) +
-    theme(plot.title = element_text(hjust = 0.5)) +
-    coord_fixed(50) +
-    ylab("Normalized counts") +
-    xlab("Pseudotime")
-  plist <- c(plist, list(p))
-}
-wrap_plots(plist, ncol = 2)
-  
-```
-
-### DORC-RNA line plot, Liver, recall
-```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=8}
-plist <- list()
-
-cells <- proj$cellNames[!is.na(proj$Liver.trajectory_re)]
-pseudotime <- proj$Liver.trajectory_re[!is.na(proj$Liver.trajectory_re)]
-for(gene in c("Gzmb", "Mki67", "Ifrd1", "Tnfaip3")){
-  data_dorc <- data.frame(score = dorcMat_sm_norm[gene, cells], pseudotime = pseudotime, type = "DORC")
-  data_rna <- data.frame(score = rnaMat_sm_norm[gene, cells], pseudotime = pseudotime, type = "RNA")
-  
-  DORC_fit <- loess(score ~ pseudotime, data = data_dorc, span = 0.2)
-  data_dorc$smooth <- DORC_fit$fitted
-  RNA_fit <- loess(score ~ pseudotime, data = data_rna, span = 0.2)
-  data_rna$smooth <- RNA_fit$fitted
-  
-  data <- rbind(data_dorc, data_rna)
-  data$type <- factor(data$type, levels = c("DORC", "RNA"))
-  
-  p <- ggplot(data) +
-    theme_bw() +
-    # geom_point(aes(x = pseudotime, y = score, color = type), size = 0.5, alpha = 0.1, shape = 16) +
-    geom_line(aes(x = pseudotime, y = smooth, color = type), size = 1) +
-    # geom_smooth(aes(x = pseudotime, y = smooth, color = type), method = "loess", span = 0.2, size = 1, se = FALSE) +
-    scale_color_manual(values = line_colors) +
-    scale_x_continuous(limits = c(0, 100), expand = c(0.025, 0.025)) +
-    scale_y_continuous(limits = c(0, 1), expand = c(0.025, 0.025)) +
-    theme(panel.grid = element_blank(),
-          axis.text.x = element_text(size = 10, color = "black"),
-          axis.text.y = element_text(size = 10, color = "black"),
-          axis.title.x = element_text(size = 13),
-          axis.title.y = element_text(size = 13)) +
-    ggtitle(gene) +
-    theme(plot.title = element_text(hjust = 0.5)) +
-    coord_fixed(50) +
-    ylab("Normalized counts") +
-    xlab("Pseudotime")
-  plist <- c(plist, list(p))
-}
-wrap_plots(plist, ncol = 2)
-  
-```
-
-### DORC-RNA line plot, Blood, recall
-```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=8}
-plist <- list()
-cells <- proj$cellNames[!is.na(proj$Blood.trajectory_re)]
-pseudotime <- proj$Blood.trajectory_re[!is.na(proj$Blood.trajectory_re)]
-for(gene in c("Gzmb", "Mki67", "Ifrd1", "Tnfaip3")){
-  data_dorc <- data.frame(score = dorcMat_sm_norm[gene, cells], pseudotime = pseudotime, type = "DORC")
-  data_rna <- data.frame(score = rnaMat_sm_norm[gene, cells], pseudotime = pseudotime, type = "RNA")
-  
-  DORC_fit <- loess(score ~ pseudotime, data = data_dorc, span = 0.2)
-  data_dorc$smooth <- DORC_fit$fitted
-  RNA_fit <- loess(score ~ pseudotime, data = data_rna, span = 0.2)
-  data_rna$smooth <- RNA_fit$fitted
-  
-  data <- rbind(data_dorc, data_rna)
-  data$type <- factor(data$type, levels = c("DORC", "RNA"))
-  
-  p <- ggplot(data) +
-    theme_bw() +
-    # geom_point(aes(x = pseudotime, y = score, color = type), size = 0.5, alpha = 0.1, shape = 16) +
-    geom_line(aes(x = pseudotime, y = smooth, color = type), size = 1) +
-    # geom_smooth(aes(x = pseudotime, y = smooth, color = type), method = "loess", span = 0.2, size = 1, se = FALSE) +
-    scale_color_manual(values = line_colors) +
-    scale_x_continuous(limits = c(0, 100), expand = c(0.025, 0.025)) +
-    scale_y_continuous(limits = c(0, 1), expand = c(0.025, 0.025)) +
-    theme(panel.grid = element_blank(),
-          axis.text.x = element_text(size = 10, color = "black"),
-          axis.text.y = element_text(size = 10, color = "black"),
-          axis.title.x = element_text(size = 13),
-          axis.title.y = element_text(size = 13)) +
-    ggtitle(gene) +
-    theme(plot.title = element_text(hjust = 0.5)) +
-    coord_fixed(50) +
-    ylab("Normalized counts") +
-    xlab("Pseudotime")
-  plist <- c(plist, list(p))
-}
-wrap_plots(plist, ncol = 2)
-  
-```
 
 
 ```{r eval=TRUE, include=TRUE}

@@ -1,11 +1,13 @@
 ---
 title: "Figure 2"
 author: "Runze Xie @ institute of biophysics, 11/07/2025"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_knit$set(root.dir = "/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data")
+knitr::opts_knit$set(root.dir = "/media/zeemeeuw/TAI-seq2/TAI-Rmd/V2_data")
 ```
 
 ### Loading packages
@@ -23,15 +25,15 @@ library(openxlsx)
 library(readxl)
 library(ggalluvial)
 library(ggforce)
-source("/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_code/utils.R")
-setwd('/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
+source("/media/zeemeeuw/TAI-seq2/TAI-Rmd/V3_code/utils.R")
+setwd('/media/zeemeeuw/TAI-seq2/TAI-Rmd/V2_data')
 ```
 
 ### Read Seurat and ArchR object for plotting. 
 #### Critical: change the directory to your working dir accordingly!
 ```{r include = TRUE}
-RDSdir <- "/media/zeemeeuw/TAI-seq/mmTAI/RNA/" # output RDS file dir
-ATACdir <- "/media/zeemeeuw/TAI-seq/mmTAI/ATAC/overlapped_harmony/" # ATAC root dir
+RDSdir <- "/media/zeemeeuw/TAI-seq2/mmTAI/RNA/" # output RDS file dir
+ATACdir <- "/media/zeemeeuw/TAI-seq2/mmTAI/ATAC/overlapped_harmony/" # ATAC root dir
 seu <- readRDS(paste0(RDSdir, "lm_merged_overlapped_harmony.rds"))
 proj <- loadArchRProject(ATACdir)
 ```
@@ -142,62 +144,6 @@ ggplot(meta, aes(x = timepoint, y = freq, stratum = cell_module, alluvium = cell
   facet_wrap(~tissue)
 ```
 
-### Proportion of memory cells in different timepoints
-```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=6, fig.width=6}
-
-meta <- seu@meta.data %>% 
-  group_by(timepoint, tissue, cell_module) %>% 
-  dplyr::summarise(count = n()) %>% 
-  group_by(timepoint, tissue) %>% 
-  dplyr::mutate(freq = count/sum(count))
-meta$timepoint <- factor(meta$timepoint, levels = c("WT", "d3", "d5", "d8", "d14", "d30", "R5", "Y5"))
-meta$tissue <- factor(meta$tissue, levels = c("Ln", "Spleen", "Liver", "Blood"))
-
-
-meta_memory <- meta %>% 
-  dplyr::filter(timepoint != "WT") %>% 
-  dplyr::filter(str_detect(cell_module, "^Memory")) %>% 
-  group_by(timepoint, tissue) %>% 
-  dplyr::summarise(prop = sum(freq)) %>% 
-  dplyr::mutate(focus = if_else(timepoint %in% c("d3", "d5", "d8", "d14"), 0.1, 0)) %>% 
-  group_by(tissue) %>% 
-  dplyr::mutate(freq = prop/sum(prop)) %>% 
-  dplyr::mutate(start = -(2 * pi - cumsum(lag(freq, default = 0)) * 2 * pi), 
-                end = -(2 * pi - cumsum(freq) * 2 * pi),
-                mid = (start + end) / 2,
-                label = sprintf("%.1f%%", freq * 100)) 
-
-
-p1 <- ggplot(meta_memory %>% dplyr::filter(tissue == "Ln")) +
-  ggtitle("Ln") +
-  geom_arc_bar(aes(x0 = 0, y0 = 0, r0 = 0, r = 1, amount = prop, fill = timepoint, explode = focus), show.legend = FALSE, color = "white", linewidth = 0.3, stat = 'pie') +
-  scale_fill_manual(values = time_colors) +
-  theme_void() +
-  coord_fixed() +
-  geom_text(aes(x = 0.7 * sin(mid), y = 0.7 * cos(mid), label = label, angle = -mid * 180 / pi + 90), size = 4, color = "black") 
-p2 <- ggplot(meta_memory %>% dplyr::filter(tissue == "Spleen")) +
-  ggtitle("Spleen") +
-  geom_arc_bar(aes(x0 = 0, y0 = 0, r0 = 0, r = 1, amount = prop, fill = timepoint, explode = focus), show.legend = FALSE, color = "white", linewidth = 0.3, stat = 'pie') +
-  scale_fill_manual(values = time_colors) +
-  theme_void() +
-  coord_fixed() +
-  geom_text(aes(x = 0.7 * sin(mid), y = 0.7 * cos(mid), label = label, angle = -mid * 180 / pi + 90), size = 4, color = "black") 
-p3 <- ggplot(meta_memory %>% dplyr::filter(tissue == "Liver")) +
-  ggtitle("Liver") +
-  geom_arc_bar(aes(x0 = 0, y0 = 0, r0 = 0, r = 1, amount = prop, fill = timepoint, explode = focus), show.legend = FALSE, color = "white", linewidth = 0.3, stat = 'pie') +
-  scale_fill_manual(values = time_colors) +
-  theme_void() +
-  coord_fixed() +
-  geom_text(aes(x = 0.7 * sin(mid), y = 0.7 * cos(mid), label = label, angle = -mid * 180 / pi + 90), size = 4, color = "black") 
-p4 <- ggplot(meta_memory %>% dplyr::filter(tissue == "Blood")) +
-  ggtitle("Blood") +
-  geom_arc_bar(aes(x0 = 0, y0 = 0, r0 = 0, r = 1, amount = prop, fill = timepoint, explode = focus), show.legend = FALSE, color = "white", linewidth = 0.3, stat = 'pie') +
-  scale_fill_manual(values = time_colors) +
-  theme_void() +
-  coord_fixed() +
-  geom_text(aes(x = 0.7 * sin(mid), y = 0.7 * cos(mid), label = label, angle = -mid * 180 / pi + 90), size = 4, color = "black") 
-wrap_plots(list(p1, p2, p3, p4), ncol = 2)
-```
 
 
 

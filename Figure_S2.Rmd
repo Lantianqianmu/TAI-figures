@@ -5,7 +5,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_knit$set(root.dir = '/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
+knitr::opts_knit$set(root.dir = '/media/zeemeeuw/TAI-seq2/TAI-Rmd/V2_data')
 ```
 
 ### Loading packages
@@ -15,8 +15,8 @@ library(dplyr)
 library(tibble)
 library(readr)
 library(patchwork)
-source("/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_code/utils.R")
-setwd('/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
+source("/media/zeemeeuw/TAI-seq2/TAI-Rmd/V2_code/utils.R")
+setwd('/media/zeemeeuw/TAI-seq2/TAI-Rmd/V2_data')
 ```
 
 ### Set parameters for plotting
@@ -217,44 +217,6 @@ p <- ggplot(meta, aes(x = sample)) +
   scale_fill_manual(values = GJx_colors) +
   ggtitle("nfrags")
 print(p)
-```
-
-### Violin plot
-```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=4, fig.width=4}
-
-data <- read_tsv('source_fig_S2g.tsv')
-
-ggplot(data = data, aes(x = sample, y = PAX5)) +
-  theme_classic() +
-  geom_violin(aes(fill = sample), adjust = 1, width = 0.8, size = 0.5, scale = "width", show.legend = TRUE, trim = TRUE) +
-  scale_fill_manual(values = GJx_colors) +
-  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 13, color = c("black", "black")),
-        axis.text.y = element_text(size = 13, color = "black"),
-        axis.title.x = element_text(size = 15),
-        axis.title.y = element_text(size = 15)) +
-  labs(title = "PAX5") +
-  theme(plot.title = element_text(hjust = 0.5)) +
-  ylim(c(0, 4)) +
-  ylab('log10(counts)') +
-  coord_fixed(0.5)
-# ggsave('/media/zeemeeuw/TAI-seq/out/GJx/PAX5.pdf', width = 5, height = 3)
-
-ggplot(data = data, aes(x = sample, y = CD3E)) +
-  theme_classic() +
-  geom_violin(aes(fill = sample), adjust = 1, width = 0.8, size = 0.5, scale = "width", show.legend = TRUE, trim = TRUE) +
-  scale_fill_manual(values = GJx_colors) +
-  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 13, color = c("black", "black")),
-        axis.text.y = element_text(size = 13, color = "black"),
-        axis.title.x = element_text(size = 15),
-        axis.title.y = element_text(size = 15)) +
-  labs(title = "CD3E") +
-  theme(plot.title = element_text(hjust = 0.5)) +
-  ylim(c(0, 3)) +
-  ylab('log10(counts)') +
-  coord_fixed(0.5)
-# ggsave('/media/zeemeeuw/TAI-seq/out/GJx/CD3E.pdf', width = 5, height = 3)
-
-
 ```
 
 ### UMAP
