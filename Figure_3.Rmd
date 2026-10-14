@@ -79,7 +79,7 @@ color_fill <- c("#B6BFEB", "#C7E9B4", "#FBE6BF", "#F7B4B4")
 
 
 
-### Supervised trajectory
+### trajectory
 ```{r eval=TRUE, include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=5}
 
 proj$cell_state <- NA
