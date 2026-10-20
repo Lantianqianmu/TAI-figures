@@ -1,11 +1,11 @@
 ---
-title: "Figure S13"
-author: "Runze Xie @ institute of biophysics, 04/24/2026"
+title: "Figure E9"
+author: "Runze Xie @ institute of biophysics, 20/10/2026"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_knit$set(root.dir = '/media/zeemeeuw/TAI-seq2/TAI-Rmd/V2_data')
+knitr::opts_knit$set(root.dir = '/media/zeemeeuw/TAI-seq3/TAI-Rmd/V4_data/figure_Ext9/')
 ```
 
 ### Loading packages
@@ -21,8 +21,8 @@ library(readxl)
 library(openxlsx)
 library(ggbreak)
 library(ggbeeswarm)
-source("/media/zeemeeuw/TAI-seq2/TAI-Rmd/V2_code/utils.R")
-setwd('/media/zeemeeuw/TAI-seq2/TAI-Rmd/V2_data')
+source("/media/zeemeeuw/TAI-seq3/TAI-Rmd/V4_code/utils.R")
+setwd('/media/zeemeeuw/TAI-seq3/TAI-Rmd/V4_data/figure_Ext9/')
 ```
 
 ### Set parameters for plotting
@@ -176,12 +176,15 @@ df_sig <- lapply(1:nrow(comb), function(i) {
   guse <- comb[i,]
   t <- wilcox.test(x = data %>% dplyr::filter(phase == guse$V1) %>% pull(log_MFI),
               y = data %>% dplyr::filter(phase == guse$V2) %>% pull(log_MFI), paired = FALSE, var.equal = FALSE)
-  c <- tibble(p = t$p.value, 
+  pval <- t$p.value
+  pval <- scales::number(pval, accuracy = c(0.001, 0.001, 0.0001, 0.001, 0.01, 0.01)[i])
+  c <- tibble(p = pval, 
               xmin = data %>% dplyr::filter(phase == guse$V1) %>% pull(x) %>% unique(),
               xmax = data %>% dplyr::filter(phase == guse$V2) %>% pull(x) %>% unique(),
               x_min_group = data %>% dplyr::filter(phase == guse$V1) %>% pull(phase) %>% unique(),
               x_max_group = data %>% dplyr::filter(phase == guse$V2) %>% pull(phase) %>% unique(),
               y = max(data$log_MFI)/100*(70 + i*3))
+  
 }) %>% Reduce("rbind", .)
 
 
@@ -224,13 +227,16 @@ df_sig <- lapply(1:nrow(comb), function(i) {
   guse <- comb[i,]
   t <- wilcox.test(x = data %>% dplyr::filter(phase == guse$V1) %>% pull(mean_prop),
               y = data %>% dplyr::filter(phase == guse$V2) %>% pull(mean_prop), paired = FALSE, var.equal = FALSE)
-  c <- tibble(p = t$p.value, 
+  pval <- t$p.value
+  pval <- scales::number(pval, accuracy = c(0.0001, 0.00001, 0.0001, 0.0001, 0.01, 0.01)[i])
+  c <- tibble(p = pval, 
               xmin = data %>% dplyr::filter(phase == guse$V1) %>% pull(x) %>% unique(),
               xmax = data %>% dplyr::filter(phase == guse$V2) %>% pull(x) %>% unique(),
               x_min_group = data %>% dplyr::filter(phase == guse$V1) %>% pull(phase) %>% unique(),
               x_max_group = data %>% dplyr::filter(phase == guse$V2) %>% pull(phase) %>% unique(),
               y = max(data$mean_prop)/100*(70 + i*3))
 }) %>% Reduce("rbind", .)
+df_sig$p[2] <- '7.6e-5'
 
 
 ggplot(data, aes(x = phase, y = mean_prop)) + 

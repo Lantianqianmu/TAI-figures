@@ -1,11 +1,11 @@
 ---
 title: "Figure 4"
-author: "Runze Xie @ institute of biophysics, 28/05/2026"
+author: "Runze Xie @ institute of biophysics, 14/10/2026"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_knit$set(root.dir = '/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
+knitr::opts_knit$set(root.dir = '/media/zeemeeuw/TAI-seq3/TAI-Rmd/V4_data')
 ```
 
 ### Loading packages
@@ -24,8 +24,11 @@ library(ggalt)
 library(readxl)
 library(openxlsx)
 library(pheatmap)
-source("/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_code/utils.R")
-setwd('/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
+library(ComplexHeatmap)
+library(circlize)
+library(grid)
+source("/media/zeemeeuw/TAI-seq3/TAI-Rmd/V4_code/utils.R")
+setwd('/media/zeemeeuw/TAI-seq3/TAI-Rmd/V4_data')
 ```
 
 ### Set parameters for plotting
@@ -152,6 +155,7 @@ tcr_paired_chao1 <- tcr_paired2 %>%
 tcr_paired_chao1$timepoint <- factor(tcr_paired_chao1$timepoint, levels = c("WT", "d3", "d5", "d8", "d14", "d30", "R5", "Y5"))
 
 lim <- 30000
+lim <- 500000
 tcr_paired_chao1 <- tcr_paired_chao1 %>% dplyr::mutate(Chao1 = if_else(chao1 > lim, lim, chao1))
 
 
@@ -213,20 +217,35 @@ pdata <- pdata[c("TRBV12-1", "TRBV13-3", "TRBV3", "TRBV20", "TRBV31", "TRBV14", 
                    "TRBV24",   "TRBV17",  "TRBV4", "TRBV15", "TRBV5", "TRBV2", "TRBV26", "TRBV1",  "TRBV12-2", "TRBV19", "TRBV13-1", "TRBV29"), 
                c("WT", "d3", "d5", "d8", "d14", "d30", "R5", "Y5")]
 pdata <- t(t(pdata)/colSums(pdata))
-pdata[pdata > 0.2] <- 0.2
-pheatmap::pheatmap(pdata,
-                   show_colnames = TRUE,
-                   show_rownames = TRUE,
-                   cluster_rows = FALSE,
-                   cluster_cols = FALSE,
-                   treeheight_col = 0,
-                   treeheight_row = 10,
-                   border_color = NA,
-                   clustering_method = "ward.D",
-                   scale = "none",
-                   color = choose_colorset("wolfgang_basic"),
-                   fontsize_row = 8,
-                   width = 2.5, height = 4)
+
+pal <- choose_colorset("wolfgang_basic", 256)
+
+col_fun <- colorRamp2(
+    breaks = c(seq(0, 0.2, length.out = 256), 0.7),
+    colors = c(pal, "#b7282e")
+)
+
+# pdf("/media/zeemeeuw/TAI-seq3/out/figure_4c.pdf", width = 4, height = 8)
+Heatmap(
+    pdata,
+    cluster_rows = FALSE,
+    cluster_columns = FALSE,
+    name = "Value",
+    col = col_fun,
+    heatmap_legend_param = list(
+        at = c(0, 0.2, 0.7),
+        labels = c("0", "0.2", "0.7"),
+        break_dist = c(5, 1),
+        legend_height = unit(5, "cm")
+    )
+)
+# dev.off()
+
+# out <- pdata |> 
+#   as.data.frame() |> 
+#   tibble::rownames_to_column("gene") |> 
+#   as_tibble()
+# write_tsv(out, "/media/zeemeeuw/TAI-seq3/TAI-Rmd/V4_data/figure_4/source_fig_4c.tsv")
 
 ```
 

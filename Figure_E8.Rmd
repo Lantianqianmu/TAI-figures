@@ -1,11 +1,11 @@
 ---
-title: "Figure S12"
-author: "Runze Xie @ institute of biophysics, 28/05/2026"
+title: "Figure E8"
+author: "Runze Xie @ institute of biophysics, 20/10/2026"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_knit$set(root.dir = '/media/zeemeeuw/TAI-seq2/TAI-Rmd/V2_data')
+knitr::opts_knit$set(root.dir = '/media/zeemeeuw/TAI-seq3/TAI-Rmd/V4_data/figure_Ext8/')
 ```
 
 ### Loading packages
@@ -23,14 +23,14 @@ library(readxl)
 library(ggrepel)
 library(scplotter)
 library(BSgenome.Mmusculus.UCSC.mm10)
-source("/media/zeemeeuw/TAI-seq2/TAI-Rmd/V2_code/utils.R")
-setwd('/media/zeemeeuw/TAI-seq2/TAI-Rmd/V2_data')
+source("/media/zeemeeuw/TAI-seq3/TAI-Rmd/V4_code/utils.R")
+setwd('/media/zeemeeuw/TAI-seq3/TAI-Rmd/V4_data/figure_Ext8/')
 ```
 
 ### Read Seurat and ArchR object for plotting. 
 #### Critical: change the directory to your working dir accordingly!
 ```{r include = TRUE}
-ATACdir <- "/media/zeemeeuw/TAI-seq2/mmTAI/ATAC/overlapped_harmony/" # ATAC root dir
+ATACdir <- "/media/zeemeeuw/TAI-seq3/TAI-Rmd/TAI-seq/mmTAI/ATAC/overlapped_harmony/" # ATAC root dir
 proj <- loadArchRProject(ATACdir)
 
 ```

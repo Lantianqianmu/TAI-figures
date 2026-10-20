@@ -1,376 +1,337 @@
 ---
 title: "Figure S1"
-author: "Runze Xie @ institute of biophysics, 28/05/2026"
+author: "Runze Xie @ institute of biophysics, 20/10/2026"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_knit$set(root.dir = '/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
+knitr::opts_knit$set(root.dir = '/media/zeemeeuw/TAI-seq3/TAI-Rmd/V4_data/figure_Sup1/')
 ```
-
-
 
 ### Loading packages
 ```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE}
 library(ggplot2)
+library(patchwork)
 library(dplyr)
+library(tibble)
 library(readr)
-library(tidyr)
-library(ggnewscale)
-library(ggforce)
-source("/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_code/utils.R")
-setwd('/media/zeemeeuw/TAI-seq/TAI-Rmd/V2_data')
+library(ArchR)
+library(Seurat)
+library(scplotter)
+library(openxlsx)
+library(readxl)
+library(circlize)
+source("/media/zeemeeuw/TAI-seq3/TAI-Rmd/V4_code/utils.R")
+setwd('/media/zeemeeuw/TAI-seq3/TAI-Rmd/V4_data/figure_Sup1/')
+```
+
+### Read Seurat and ArchR object for plotting. 
+#### Critical: change the directory to your working dir accordingly!
+```{r include = TRUE}
+RDSdir <- "/media/zeemeeuw/TAI-seq3/TAI-Rmd/TAI-seq/mmTAI/RNA/" # output RDS file dir
+ATACdir <- "/media/zeemeeuw/TAI-seq3/TAI-Rmd/TAI-seq/mmTAI/ATAC/overlapped_harmony/" # ATAC root dir
+seu <- readRDS(paste0(RDSdir, "lm_merged_overlapped_harmony.rds"))
+proj <- loadArchRProject(ATACdir)
 ```
 
 ### Set parameters for plotting
 ```{r include = TRUE}
-assignIdents <- function(x, min_frags_human, min_frags_mouse = min_frags_human){
-  human <- as.integer(x[2])
-  mouse <- as.integer(x[3])
-  if(human < min_frags_human && mouse < min_frags_mouse)(return("low yield"))
-  if(human/mouse > 4){
-    return("human")
-  }else if(mouse/human > 4){
-    return("mouse")
-  }else{
-    return("mix")
-  }
-}
-
-
-```
-
-### Species mixing
-ATAC
-```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=5}
-
-minFrags_human <- 3000
-minFrags_mouse <- 3000
-x_limit <- 60
-y_limit <- 60
-data <- read_tsv('source_fig_S1c.tsv')
-data$Type <- factor(data$Type, levels = c("low yield", "human", "mouse", "mix"))
-data_sum <- data.frame(table(data$Type))[2:4,]
-colnames(data_sum) <- c("Type", "Counts")
-data_sum$Type <- factor(data_sum$Type, levels = c("mouse", "human", "mix"))
-data_sum$x <- x_limit*0.7
-data_sum$y <- seq(from = y_limit*0.7-y_limit/10, to = y_limit*0.7+y_limit/10, by = y_limit/10)
-median_hg38 <- median(data$count.hg38[data$ident == "human"])
-median_mm10 <- median(data$count.mm10[data$ident == "mouse"])
-drate <- round(100*sum(data$ident == "mix")/sum(data$ident != "low yield"), 3)
-data <- data %>% arrange(factor(data$ident, levels = c("mix", "low yield", "human", "mouse")))
-data$x <- data$count.hg38/1000
-data$y <- data$count.mm10/1000
-
-
-ggplot(data, aes(x = x, y = y)) +
-  geom_point(size = 0.2, aes(colour = Type)) +
-  scale_color_manual(values = c("#AAAAAA", "#4169E1", "#DC143C", "#c9c9c9")) +
-  theme_classic() +
-  # labs(title = paste0("ATAC | min ", minFrags_human, " ", minFrags_mouse, " | ", sum(data$ident != "low yield"), " cells | ", drate, "%")) +
-  labs(title = "ATAC") +
-  scale_x_continuous(limits = c(0, x_limit)) +
-  scale_y_continuous(limits = c(0, y_limit)) +
-  geom_text(data = data_sum, aes(label = paste0(Type, " (", Counts, ")"), x = x, y = y), size = 4) +
-  xlab(bquote(paste('hg38 unique fragments (×', 10^3, ')', ' (', .(median_hg38), ')'))) +
-  ylab(bquote(paste('mm10 unique fragments (×', 10^3, ')', ' (', .(median_mm10), ')'))) +
-  xlab(bquote(paste('hg38 unique fragments (×', 10^3, ')'))) +
-  ylab(bquote(paste('mm10 unique fragments (×', 10^3, ')'))) +
-  theme(plot.title = element_text(hjust = 0.5)) +
-  coord_fixed(ratio = x_limit/y_limit) +
-  guides(color = guide_legend(override.aes = list(size = 2)))
-
-```
-RNA
-
-```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=5}
-
-minFrags_human <- 1000
-minFrags_mouse <- 3000
-x_limit <- 30
-y_limit <- 50
-data <- read_tsv('source_fig_S1d.tsv')
-median_hg38 <- median(data$count.hg38[data$ident == "human"])
-median_mm10 <- median(data$count.mm10[data$ident == "mouse"])
-drate <- round(100*sum(data$ident == "mix")/sum(data$ident != "low yield"), 3)
-data$Type <- data$ident
-data <- data %>% arrange(factor(data$ident, levels = c("mix", "low yield", "human", "mouse")))
-data$x <- data$count.hg38/1000
-data$y <- data$count.mm10/1000
-data_sum <- data.frame(table(data$Type))[2:4,]
-colnames(data_sum) <- c("Type", "Counts")
-data_sum$Type <- factor(data_sum$Type, levels = c("mouse", "human", "mix"))
-data_sum$x <- x_limit*0.7
-data_sum$y <- seq(from = y_limit*0.7-y_limit/10, to = y_limit*0.7+y_limit/10, by = y_limit/10)
-data$Type <- factor(data$Type, levels = c("low yield", "human", "mouse", "mix"))
-
-ggplot(data, aes(x = x, y = y)) +
-  geom_point(size = 0.1, aes(colour = Type)) +
-  scale_color_manual(values = c("#AAAAAA", "#4169E1", "#DC143C", "#c9c9c9")) +
-  scale_x_continuous(limits = c(0, x_limit)) +
-  scale_y_continuous(limits = c(0, y_limit)) +
-  theme_classic() +
-  # labs(title = paste0("RNA | min ", minFrags_human, " ", minFrags_mouse, " | ", sum(data$ident != "low yield"), " cells | ", drate, "%")) +
-  labs(title = "RNA") +
-  geom_text(data = data_sum, aes(label = paste0(Type, " (", Counts, ")"), x = x, y = y), size = 3) +
-  xlab(bquote(paste('hg38 unique umis (', 10^3, ')', ' (', .(median_hg38), ')'))) +
-  ylab(bquote(paste('mm10 unique umis (', 10^3, ')', ' (', .(median_mm10), ')'))) +
-  xlab(bquote(paste('hg38 unique fragments (×', 10^3, ')'))) +
-  ylab(bquote(paste('mm10 unique fragments (×', 10^3, ')'))) +
-  theme(plot.title = element_text(hjust = 0.5)) +
-  coord_fixed(ratio = x_limit/y_limit) +
-  guides(color = guide_legend(override.aes = list(size = 2)))
+mmjoint_colors <- c("Quiescent" = "#bbdefb", 
+                    "Priming_1" =  "#519ec6", 
+                    "Priming_2" = "#3971ff",
+                    "Activation_1" = "#a9df91", 
+                    "Activation_2" = "#7eca72", 
+                    "Activation_3" = "#48b352", 
+                    "Effector_1" = "#ffb669", 
+                    "Effector_2" = "#ff882e", 
+                    "Effector-memory_transition_1" = "#cda7c7",
+                    "Effector-memory_transition_2" = "#9e79b6",
+                    "Effector-memory_transition_3" = "#7c4d9f",
+                    "Memory_1" = "#ef999c", 
+                    "Memory_2" = "#eb5e63",
+                    "Memory_3" = "#e53a46")
+time_colors <-  c("WT" = "#ABD8E6", "d3" = "#35a153", "d5" = "#1f6933", "d8" = "#f26a11", "d14" = "#B22222" , "d30" = "#B17BA6", "R5" = "#85B0FF", "Y5" = "#3648A2")
+tissue_colors <-  c("Spleen" = "#36A23D", "Ln" = "#2884E7", "Liver" = "#817ab9", "Blood" = "#EE3B00")
 
 ```
 
-### Sample correlation, ATAC
-```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=4, fig.width=4}
-data <- read_tsv("source_fig_S1E_NIH3T3.tsv")
+### Circos plot
+```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=10, fig.width=10}
 
-model <- lm(y1~x1, data = data)
-model_summary <- summary(model)
-R_square <- model_summary$r.squared
-R_value <- round(sqrt(R_square), digits = 2)
-x_max <- 11
-y_max <- 11
-data_anno <- data.frame(x = 4+(x_max-4)/8, y = y_max-(y_max-4)/20, value = R_value)
+meta <- read_tsv('source_fig_S5b.tsv')
 
-ggplot(data = data, aes(x = x, y = y)) +
-  geom_point(size = 0.1, aes(color = density)) +
-  geom_text(data = data_anno, aes(label = paste0("R = ", value), x = x, y = y), size = 5) +
-  theme_classic() +
-  scale_color_gradientn(colors = BuenColors::jdb_palette("solar_extra"), breaks = c(min(data$density), max(data$density)), labels = c("low", "high")) +
-  guides(color = guide_colorbar(frame.colour = "black", frame.linewidth = 1, frame.linetype = 1, barwidth = 0.7, barheight = 2, ticks = FALSE)) +
-  theme(axis.text.x = element_text(size = 13, color = "black"),
-        axis.text.y = element_text(size = 13, color = "black"),
-        axis.title.y = element_text(size = 15),
-        axis.title.x = element_text(size = 15)) +
-  scale_x_continuous(breaks = c(4, 5, 6, 7, 8, 9, 10, 11), limits = c(4, x_max)) +
-  scale_y_continuous(breaks = c(4, 5, 6, 7, 8, 9, 10, 11), limits = c(4, y_max)) +
-  xlab(bquote(Replicate~1~log[2](fragments))) +
-  ylab(bquote(Replicate~2~log[2](fragments))) +
-  coord_fixed(ratio = 1)
+meta_summary <- meta %>% 
+  group_by(sample) %>% 
+  dplyr::summarise(paired_tcr_prop = sum(has_paired_tcr == "Y")/n(), 
+                   all_tcr_prop = sum(has_all_tcr == "Y")/n(), 
+                   cell_number = n(),
+                   sum_paired = sum(tcr == "paired"),
+                   prop_paired = sum(tcr == "paired")/n(),
+                   prop_a_only = sum(tcr == "A only")/n(),
+                   prop_b_only = sum(tcr == "B only")/n(),
+                   undetected = 1 - prop_paired - prop_a_only - prop_b_only)
 
-data <- read_tsv("source_fig_S1E_GM12878.tsv")
-model <- lm(y1~x1, data = data)
-model_summary <- summary(model)
-R_square <- model_summary$r.squared
-R_value <- round(sqrt(R_square), digits = 2)
-x_max <- 10
-y_max <- 10
-data_anno <- data.frame(x = 4+(x_max-4)/8, y = y_max-(y_max-4)/20, value = R_value)
 
-ggplot(data = data, aes(x = x, y = y)) +
-  geom_point(size = 0.1, aes(color = density)) +
-  geom_text(data = data_anno, aes(label = paste0("R = ", value), x = x, y = y), size = 5) +
-  theme_classic() +
-  scale_color_gradientn(colors = BuenColors::jdb_palette("solar_extra"), breaks = c(min(data$density), max(data$density)), labels = c("low", "high")) +
-  guides(color = guide_colorbar(frame.colour = "black", frame.linewidth = 1, frame.linetype = 1, barwidth = 0.7, barheight = 2, ticks = FALSE)) +
-  theme(axis.text.x = element_text(size = 13, color = "black"),
-        axis.text.y = element_text(size = 13, color = "black"),
-        axis.title.y = element_text(size = 15),
-        axis.title.x = element_text(size = 15)) +
-  scale_x_continuous(breaks = c(4, 5, 6, 7, 8, 9, 10, 11), limits = c(4, x_max)) +
-  scale_y_continuous(breaks = c(4, 5, 6, 7, 8, 9, 10, 11), limits = c(4, y_max)) +
-  xlab(bquote(Replicate~1~log[2](fragments))) +
-  ylab(bquote(Replicate~2~log[2](fragments))) +
-  coord_fixed(ratio = 1)  
+samples <- c("Spleen-WTx", "Spleen-d3SL", "Spleen-d3SL2", "Spleen-d5SL", "Spleen-d5SL2", "Spleen-d8SL", "Spleen-d8SL2", "Spleen-d14SL", "Spleen-d14SL2", "Spleen-d14SL3", "Spleen-d30SL", "Spleen-d30SL2", "Spleen-R5SL", "Spleen-R5SL2", "Spleen-R5r-SLL1", "Spleen-R5r3-SLL3", "Spleen-Y5SL", "Spleen-Y5SLr3",
+             "Ln-WTx", "Ln-d3SL", "Ln-d3SL2", "Ln-d5SL", "Ln-d5SL2", "Ln-d8SL", "Ln-d8SL2", "Ln-d14SL", "Ln-d14SL2", "Ln-d14SL3", "Ln-d30SL", "Ln-d30SL2",  "Ln-R5SL", "Ln-R5SL2", "Ln-R5r-SLL1", "Ln-R5r3-SLL3", "Ln-Y5SL", "Ln-Y5SLr3", 
+             "Blood-WTx", "Blood-d8x", "Blood-d8x2", "Blood-d14x", "Blood-d14x2", "Blood-d30BV", "Blood-d30BV2", "Blood-R5BV", "Blood-R5BV2", "Blood-Y5BV",  
+             "Liver-WTx", "Liver-d5L", "Liver-d5L2",  "Liver-d8x", "Liver-d8x2", "Liver-d14x", "Liver-d14x2", "Liver-d14r-SLL1", "Liver-d14r3-SLL3", "Liver-d30BV", "Liver-d30BV2", "Liver-R5BV", "Liver-R5BV2", "Liver-R5r-YR", "Liver-Y5BV",  "Liver-Y5r-YR")
+
+
+meta_summary$sample <- factor(meta_summary$sample, levels = samples)
+meta_summary <- meta_summary %>% arrange(sample)
+meta_summary$id <- consecutive_id(meta_summary$sample)
+meta_summary$x <- meta_summary$id - 0.5
+
+
+
+
+# set color
+col_nfrags <- colorRampPalette(c("#B6BFEB", "#8694D8", "#5668C3", "#3648A2", "#1C2B77"))(62)
+col_TSS <- colorRampPalette(c("#B6DDEB", "#86C2D8", "#56A6C3", "#3685A2", "#1C5F77"))(62)
+col_numis <- colorRampPalette(c("#F7B4B4", "#ED8080", "#DF4A4A", "#BE2A2A", "#8C1616"))(62)
+col_ngenes <- colorRampPalette(c("#E4EBB6", "#CDD886", "#B4C356", "#93A236", "#6B771C"))(62)
+col_cellnum <- colorRampPalette(c("#B6EBBA", "#86D88B", "#56C35D", "#36A23D", "#1C7722"))(62)
+col_TCR <- colorRampPalette(c("#FFC782", "#FFA12F", "#FF851D", "#ff6200", "#FF4E0A", "#CF3D00"))(62)
+
+
+
+
+# Initialize Circos plot
+height_sample_names <- 0.05
+height_nfrags <- 0.08
+height_TSS <- 0.08
+height_numis <- 0.08
+height_ngenes <- 0.08
+height_cellnum <- 0.08
+height_TCR <- 0.15
+
+
+start_degree <- 90  
+circos.par(gap.degree = 0, 
+           start.degree = start_degree, 
+           track.margin = c(0.01, 0.01),
+           canvas.xlim =  c(-1.5, 1.5),
+           canvas.ylim =  c(-1.5, 1.5))
+circos.initialize(sectors = c("sample", "blank"), xlim = c(0, 62), sector.width = c(0.75, 0.25))
+
+# sample names
+circos.track(sectors = factor(c("sample", "blank"), levels = c("sample", "blank")),
+             bg.border = NA,
+             bg.col = c(sample = NA, blank = NA),
+             track.height = height_sample_names,
+             ylim = c(0, 1),
+             panel.fun = function(x, y) {
+               if(CELL_META$sector.index == "sample"){
+                 for(pos in seq(0.5, 61.5, by = 1)) {
+                   value = meta_summary$sample[which(pos == meta_summary$x)]
+                   circos.text(pos, 0, labels = value, 
+                               facing = "reverse.clockwise",
+                               adj = c(1, 0.5),
+                               cex = 0.8,
+                               niceFacing = TRUE,
+                               col = "black") # col = col_nfrags[pos+0.5]
+                   
+                 }
+               }
+             })
+
+# nFrags
+circos.track(sectors = factor(c("sample", "blank"), levels = c("sample", "blank")),
+             bg.border = NA,
+             bg.col = c(sample = "#F2F4FE", blank = NA),
+             track.height = height_nfrags,
+             ylim = c(0, 4),
+             panel.fun = function(x, y) {
+               if(CELL_META$sector.index == "sample"){
+                 for(pos in seq(0.5, 61.5, by = 1)) {
+                   value = log10(meta$nFrags[meta$sample == meta_summary$sample[which(pos == meta_summary$x)]])
+                   circos.violin(value, pos, border = NA, col = col_nfrags[pos+0.5], violin_width = 1,  cex = 0.2)
+                   
+                 }
+                 circos.yaxis(
+                   side = "left",
+                   at = c(0, 4),
+                   labels = TRUE,
+                   labels.cex = 0.8,
+                   tick.length = 0.2
+                 )
+               }
+             })
+
+# TSS
+circos.track(sectors = factor(c("sample", "blank"), levels = c("sample", "blank")),
+             bg.border = NA,
+             bg.col = c(sample = "#F2FBFE", blank = NA),
+             track.height = height_TSS,
+             ylim = c(0, 30),
+             panel.fun = function(x, y) {
+               if(CELL_META$sector.index == "sample"){
+                 for(pos in seq(0.5, 61.5, by = 1)) {
+                   value = meta$TSSEnrichment[meta$sample == meta_summary$sample[which(pos == meta_summary$x)]]
+                   circos.violin(value, pos, border = NA, col = col_TSS[pos+0.5], violin_width = 1,  cex = 0.2)
+                   
+                 }
+                 circos.yaxis(
+                   side = "left",
+                   at = c(0, 20),
+                   labels = TRUE,
+                   labels.cex = 0.8,
+                   tick.length = 0.2
+                 )
+               }
+             })
+
+# nCount_RNA
+circos.track(sectors = factor(c("sample", "blank"), levels = c("sample", "blank")),
+             track.height = height_numis,
+             bg.border = NA,
+             bg.col = c(sample = "#FFEEEE", blank = NA),
+             ylim = c(0, 4), 
+             panel.fun = function(x, y) {
+               if(CELL_META$sector.index == "sample"){
+                 for(pos in seq(0.5, 61.5, by = 1)) {
+                   value = log10(meta$nCount_RNA[meta$sample == meta_summary$sample[which(pos == meta_summary$x)]])
+                   circos.violin(value, pos, border = NA, col = col_numis[pos+0.5], violin_width = 1, cex = 0.2)
+                 }
+                 circos.yaxis(
+                   side = "left",
+                   at = c(0, 4),
+                   labels = TRUE,
+                   labels.cex = 0.8,
+                   tick.length = 0.2
+                 )
+               }
+               
+             })
+
+# nFeature_RNA
+circos.track(sectors = factor(c("sample", "blank"), levels = c("sample", "blank")),
+             track.height = height_ngenes,
+             bg.border = NA,
+             bg.col = c(sample = "#FCFEF2",  blank = NA),
+             ylim = c(0, 4), 
+             panel.fun = function(x, y) {
+               if(CELL_META$sector.index == "sample"){
+                 for(pos in seq(0.5, 61.5, by = 1)) {
+                   value = log10(meta$nFeature_RNA[meta$sample == meta_summary$sample[which(pos == meta_summary$x)]])
+                   circos.violin(value, pos, border = NA, col = col_ngenes[pos+0.5], violin_width = 1, cex = 0.2)
+                 }
+                 circos.yaxis(
+                   side = "left",
+                   at = c(0, 4),
+                   labels = TRUE,
+                   labels.cex = 0.8,
+                   tick.length = 0.2
+                 )
+               }
+               
+             })
+
+# cell numbers
+circos.track(sectors = factor(c("sample", "blank"), levels = c("sample", "blank")),
+             track.height = height_cellnum,
+             bg.border = NA,
+             bg.col = c(sample = "#F2FEF3", blank = NA),
+             ylim = c(0, 5), panel.fun = function(x, y) {
+               if(CELL_META$sector.index == "sample"){
+                 for(pos in seq(0.5, 61.5, by = 1)) {
+                   value = log10(meta_summary$cell_number[meta_summary$sample == meta_summary$sample[which(pos == meta_summary$x)]])
+                   circos.barplot(value, pos, border = NA, col = col_cellnum[pos+0.5])
+                 }
+                 circos.yaxis(
+                   side = "left",
+                   at = c(0, 5),
+                   labels = TRUE,
+                   labels.cex = 0.8,
+                   tick.length = 0.2
+                 )
+               }
+             })
+
+# TCR numbers
+circos.track(sectors = factor(c("sample", "blank"), levels = c("sample", "blank")),
+             track.height = height_TCR,
+             bg.border = NA,
+             bg.col = c(sample = "#FBE6BF", blank = NA),
+             ylim = c(0, 4), panel.fun = function(x, y) {
+               if(CELL_META$sector.index == "sample"){
+                 for(pos in seq(0.5, 61.5, by = 1)) {
+                   value = log10(meta_summary$sum_paired[meta_summary$sample == meta_summary$sample[which(pos == meta_summary$x)]])
+                   circos.barplot(value, pos, border = NA, col = col_TCR[pos+0.5])
+                 }
+                 circos.yaxis(
+                   side = "left",
+                   at = c(0, 4),
+                   labels = TRUE,
+                   labels.cex = 0.8,
+                   tick.length = 0.2
+                 )
+               }
+             })
+
+
+
+# Finish plotting
+circos.clear()
+```
+
+### Cell type UMAP
+```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=15, fig.width=15}
+CellDimPlot(seu, reduction = "UMAP_LSI_Combined_batch3.3", legend.position = "right", group_by = "cell_type", raster = TRUE, pt_size = 0.1, stat_by = "timepoint", stat_plot_type = "pie")
 
 ```
 
+### Tissue/timepoint UMAP
+```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=10, fig.width=10}
 
-### Sample correlation, RNA
-```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=4, fig.width=4}
-data <- read_tsv("source_fig_S1F_NIH3T3.tsv")
-model <- lm(y1~x1, data = data)
-model_summary <- summary(model)
-R_square <- model_summary$r.squared
-R_value <- round(sqrt(R_square), digits = 2)
-x_max <- 16
-y_max <- 16
-data_anno <- data.frame(x = 4+(x_max-4)/8, y = y_max-(y_max-4)/20, value = R_value)
+CellDimPlot(seu, reduction = "UMAP_LSI_Combined_batch3.3",  theme = "theme_blank", legend.position = "right", 
+            group_by = "timepoint", raster = TRUE, pt_size = 0.1, palcolor = time_colors)
 
-ggplot(data = data, aes(x = x, y = y)) +
-  geom_point(size = 0.1, aes(color = density)) +
-  geom_text(data = data_anno, aes(label = paste0("R = ", value), x = x, y = y), size = 5) +
-  theme_classic() +
-  scale_color_gradientn(colors = viridis::viridis(100), breaks = c(min(data$density), max(data$density)), labels = c("low", "high")) +
-  guides(color = guide_colorbar(frame.colour = "black", frame.linewidth = 1, frame.linetype = 1, barwidth = 0.7, barheight = 2, ticks = FALSE)) +
-  scale_x_continuous(breaks = c(4, 8, 12, 16), limits = c(4, x_max)) +
-  scale_y_continuous(breaks = c(4, 8, 12, 16), limits = c(4, y_max)) +
-  xlab(bquote(Replicate~1~log[2](umis))) +
-  ylab(bquote(Replicate~2~log[2](umis))) +
-  theme(axis.text.x = element_text(size = 13, color = "black"),
-        axis.text.y = element_text(size = 13, color = "black"),
-        axis.title.y = element_text(size = 15),
-        axis.title.x = element_text(size = 15)) +
-  coord_fixed(ratio = 14/14)
-data <- read_tsv("source_fig_S1F_GM12878.tsv")
-model <- lm(y1~x1, data = data)
-model_summary <- summary(model)
-R_square <- model_summary$r.squared
-R_value <- round(sqrt(R_square), digits = 2)
-x_max <- 14
-y_max <- 14
-data_anno <- data.frame(x = 4+(x_max-4)/8, y = y_max-(y_max-4)/20, value = R_value)
-
-ggplot(data = data, aes(x = x, y = y)) +
-  geom_point(size = 0.1, aes(color = density)) +
-  geom_text(data = data_anno, aes(label = paste0("R = ", value), x = x, y = y), size = 5) +
-  theme_classic() +
-  scale_color_gradientn(colors = viridis::viridis(100), breaks = c(min(data$density), max(data$density)), labels = c("low", "high")) +
-  guides(color = guide_colorbar(frame.colour = "black", frame.linewidth = 1, frame.linetype = 1, barwidth = 0.7, barheight = 2, ticks = FALSE)) +
-  scale_x_continuous(breaks = c(4, 8, 12, 16), limits = c(4, x_max)) +
-  scale_y_continuous(breaks = c(4, 8, 12, 16), limits = c(4, y_max)) +
-  xlab(bquote(Replicate~1~log[2](umis))) +
-  ylab(bquote(Replicate~2~log[2](umis))) +
-  theme(axis.text.x = element_text(size = 13, color = "black"),
-        axis.text.y = element_text(size = 13, color = "black"),
-        axis.title.y = element_text(size = 15),
-        axis.title.x = element_text(size = 15)) +
-  coord_fixed(ratio = 14/14)
-```
-
-
-### Types of detected transcripts
-```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=4, fig.width=4}
-data_combined <- read_tsv("source_fig_S1G.tsv")
-data_combined$sample <- factor(data_combined$sample, levels = c("GM12878_37", "GM12878_55", "3T3_37", "3T3_55"))
-data_combined$Type <- factor(data_combined$Type, levels = c("CDS Exons", "5\'UTR Exons", "3\'UTR Exons", "Introns", "Intergenic"))
-
-ggplot(data_combined, aes(x = sample, fill = Type, weight = proportion)) +
-  theme_classic() +
-  geom_bar(position = "stack") +
-  ylab("Proportion %") +
-  scale_fill_manual(values = c('#AF4304', '#F26D5B', '#FFBC42', '#D6ECFA', '#30A9DE')) +
-  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 13, color = c("black", "black")),
-        axis.text.y = element_text(size = 13, color = "black"),
-        axis.title.y = element_text(size = 15),
-        axis.title.x = element_text(size = 15)) +
-  coord_fixed(4/100)
-```
-
-### Scatterplot of reads-fragments
-```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=4, fig.width=15}
-
-data <- read_tsv("source_fig_S1H.tsv")
-data$sample <- factor(data$sample, levels = c("GM12878_37", "GM12878_50", "3T3_37", "3T3_50"))
-
-ggplot(data = data, aes(x = reads, y = counts)) +
-  theme_classic() +
-  geom_smooth(aes(color = sample), formula = y~x+0, se = FALSE, fullrange = TRUE) +
-  geom_point(aes(color = sample), size = 0.5, alpha = 1) +
-  theme(axis.text.x = element_text(size = 13, color = c("black", "black")),
-        axis.text.y = element_text(size = 13, color = "black"),
-        axis.title.x = element_text(size = 15),
-        axis.title.y = element_text(size = 15)) +
-  scale_color_manual(values = c('#0245a3', '#8fbaf3', '#a40a3c', '#ffc300')) +
-  theme(plot.title = element_text(hjust = 0.5)) +
-  xlab("Bowtie2 aligned reads per cell") +
-  ylab("Unique fragments detected per cell") +
-  ylim(c(0, 50000)) +
-  xlim(c(0, 500000)) +
-  guides(color = guide_legend(override.aes = list(size = 2))) +
-  coord_fixed(ratio = 10) +
-  facet_grid(.~sample)
-```
-
-
-### Effect of dN-SMRT
-```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=5}
-
-color_JH8 <- '#d2ecf9'
-color_GJ <- '#fdb87d'
-
-data <- read_tsv("source_fig_S1j.tsv")
-data$reads <- factor(data$reads)
-data$dN_SMRT <- factor(data$dN_SMRT, levels =  c("No", "Yes"))
-out <- c()
-for(i in unique(data$reads)){
-  data_used <- data %>% filter(reads == i)
-  pout <- t.test(data_used$umis[data_used$dN_SMRT == "No"], data_used$umis[data_used$dN_SMRT == "Yes"])$p.value
-  out <- c(out, pout)
-}
-ggplot(data, aes(x = reads, y = log10(umis))) +
-  geom_boxplot(aes(fill = dN_SMRT), outlier.shape = NA, size = 0.5, alpha = 1) +
-  coord_cartesian(ylim=c(2, 5)) +
-  theme_classic() +
-  scale_fill_manual(values = c(color_JH8, color_GJ)) +
-  theme(axis.text.x = element_text(size = 13, color = c("black", "black")),
-        axis.text.y = element_text(size = 13, color = "black"),
-        axis.title.x = element_text(size = 15),
-        axis.title.y = element_text(size = 15)) +
-  labs(title = "dN-SMRT") +
-  xlab("Mean raw reads per cell") +
-  ylab(expression(log[10](umis~per~cell))) +
-  theme(plot.title = element_text(hjust = 0.5))
- 
-
-data <- read_tsv("source_fig_S1k.tsv")
-data$reads <- factor(data$reads)
-data$dN_SMRT <- factor(data$dN_SMRT, levels =  c("No", "Yes"))
-out <- c()
-for(i in unique(data$reads)){
-  data_used <- data %>% filter(reads == i)
-  pout <- t.test(data_used$genes[data_used$dN_SMRT == "No"], data_used$genes[data_used$dN_SMRT == "Yes"])$p.value
-  out <- c(out, pout)
-}
-ggplot(data, aes(x = reads, y = log10(genes))) +
-  geom_boxplot(aes(fill = dN_SMRT), outline = FALSE, outlier.shape = NA, size = 0.5, alpha = 1) +
-  coord_cartesian(ylim=c(2, 4.2)) +
-  theme_classic() +
-  scale_fill_manual(values = c(color_JH8, color_GJ)) +
-  theme(axis.text.x = element_text(size = 13, color = c("black", "black")),
-        axis.text.y = element_text(size = 13, color = "black"),
-        axis.title.x = element_text(size = 15),
-        axis.title.y = element_text(size = 15)) +
-  labs(title = "dN-SMRT") +
-  xlab("Mean raw reads per cell") +
-  ylab(expression(log[10](genes~per~cell))) +
-  theme(plot.title = element_text(hjust = 0.5))
-
-
-color_JH8 <- 'grey'
-color_GJ <- "#021EA9"
-data <- read_tsv("source_fig_S1l.tsv")
-ggplot(data = data, aes(x = reads, y = umis)) +
-  theme_classic() +
-  geom_point(aes(color = dN_SMRT), size = 1, alpha = 1, shape = 16) +
-  scale_color_manual(values = c(color_JH8, color_GJ)) +
-  theme(axis.text.x = element_text(size = 13, color = c("black", "black")),
-        axis.text.y = element_text(size = 13, color = "black"),
-        axis.title.x = element_text(size = 15),
-        axis.title.y = element_text(size = 15)) +
-  labs(title = "dN-SMRT") +
-  theme(plot.title = element_text(hjust = 0.5)) +
-  scale_x_continuous(limits = c(0, 50000)) +
-  scale_y_continuous(limits = c(0, 30000)) +
-  xlab("Raw reads per cell") +
-  ylab("Umis detected per cell") +
-  guides(color = guide_legend(override.aes = list(size = 3))) +
-  coord_fixed(ratio = 5/3)
-
-data <- read_tsv("source_fig_S1m.tsv")
-ggplot(data = data, aes(x = reads, y = genes)) +
-  theme_classic() +
-  geom_point(aes(color = dN_SMRT), size = 1, alpha = 1, shape = 16) +
-  scale_color_manual(values = c(color_JH8, color_GJ)) +
-  theme(axis.text.x = element_text(size = 13, color = c("black", "black")),
-        axis.text.y = element_text(size = 13, color = "black"),
-        axis.title.x = element_text(size = 15),
-        axis.title.y = element_text(size = 15)) +
-  labs(title = "dN-SMRT") +
-  theme(plot.title = element_text(hjust = 0.5)) +
-  xlab("Raw reads per cell") +
-  ylab("Genes detected per cell") +
-  ylim(c(0, 10000)) +
-  xlim(c(0, 50000)) +
-  guides(color = guide_legend(override.aes = list(size = 3))) +
-  coord_fixed(ratio = 5)
-  
+CellDimPlot(seu, reduction = "UMAP_LSI_Combined_batch3.3",  theme = "theme_blank", legend.position = "right", 
+            group_by = "tissue", raster = TRUE, pt_size = 0.1, palcolor = tissue_colors)
   
 ```
 
+### Ro/Re
+```{r include=TRUE, echo=TRUE, results='hold', collapse=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=8}
+
+seu$group <- paste0(seu$timepoint, "_", seu$tissue)
+data <- as.data.frame.array(table(seu$cell_type, seu$group))
+chi_sq_test <- chisq.test(data)
+exp <- chi_sq_test$expected
+Roe <- data/exp
+Roe[Roe > 5] <- 5
+
+pheatmap::pheatmap(Roe[,c("WT_Ln", "WT_Spleen", "WT_Liver", "WT_Blood",
+                          "d3_Ln", "d3_Spleen",
+                          "d5_Ln", "d5_Spleen", "d5_Liver", 
+                          "d8_Ln", "d8_Spleen", "d8_Liver", "d8_Blood",
+                          "d14_Ln", "d14_Spleen", "d14_Liver", "d14_Blood", 
+                          "d30_Ln", "d30_Spleen", "d30_Liver", "d30_Blood", 
+                          "R5_Ln", "R5_Spleen", "R5_Liver", "R5_Blood", 
+                          "Y5_Ln", "Y5_Spleen", "Y5_Liver", "Y5_Blood")],
+                   border_color = NA,
+                   show_colnames = TRUE,
+                   show_rownames = TRUE,
+                   cluster_rows = FALSE,
+                   cluster_cols = FALSE,
+                   treeheight_col = 0,
+                   treeheight_row = 0,
+                   fontsize_row = 8,
+                   fontsize_col = 8,
+                   width = 8, height = 8,
+                   scale = "none",
+                   angle_col = 45,
+                   display_numbers = TRUE, number_color = "black", fontsize_number = 6,
+                   color = choose_colorset("oranges", 256))
+
+```
+
+
+
+
+  
 ```{r eval=TRUE, include=TRUE}
 sessionInfo()
 ```

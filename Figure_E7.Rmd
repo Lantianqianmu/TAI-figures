@@ -1,11 +1,11 @@
 ---
-title: "Figure S10"
-author: "Runze Xie @ institute of biophysics, 28/05/2026"
+title: "Figure E7"
+author: "Runze Xie @ institute of biophysics, 20/10/2026"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_knit$set(root.dir = "/media/zeemeeuw/TAI-seq2/TAI-Rmd/V2_data")
+knitr::opts_knit$set(root.dir = "/media/zeemeeuw/TAI-seq3/TAI-Rmd/V4_data")
 ```
 
 ### Loading packages
@@ -21,20 +21,20 @@ library(Seurat)
 library(openxlsx)
 library(readxl)
 library(splines)
-source("/media/zeemeeuw/TAI-seq2/TAI-Rmd/V2_code/utils.R")
-setwd('/media/zeemeeuw/TAI-seq2/TAI-Rmd/V2_data')
+source("/media/zeemeeuw/TAI-seq3/TAI-Rmd/V4_code/utils.R")
+setwd('/media/zeemeeuw/TAI-seq3/TAI-Rmd/V4_data')
 ```
 #### Critical: change the directory to your working dir accordingly!
 The DORC matrix was called with FigR. Here we provide called peak-GEX correlation dataframe and MAGIC-smoothed DORC/RNA matrix.
 ```{r include = TRUE}
 # dir for mTEC
-mTEC_root <- '/media/zeemeeuw/TAI-seq2/mTEC/'
+mTEC_root <- '/media/zeemeeuw/TAI-seq3/TAI-Rmd/TAI-seq/mTEC/'
 
 # dir for mmskin
-mmskin_root <- '/media/zeemeeuw/TAI-seq2/mouse_skin/'
+mmskin_root <- '/media/zeemeeuw/TAI-seq3/TAI-Rmd/TAI-seq/mouse_skin/'
 
 # dir for pituitary
-pit_root <- '/media/zeemeeuw/TAI-seq2/pituitary/'
+pit_root <- '/media/zeemeeuw/TAI-seq3/TAI-Rmd/TAI-seq/pituitary/'
 ```
 
 ### Set parameters for plotting

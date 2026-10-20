@@ -1,13 +1,13 @@
 ---
 title: "Figure 2"
-author: "Runze Xie @ institute of biophysics, 11/07/2025"
+author: "Runze Xie @ institute of biophysics, 14/10/2026"
 output:
   html_document: default
   pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_knit$set(root.dir = "/media/zeemeeuw/TAI-seq2/TAI-Rmd/V2_data")
+knitr::opts_knit$set(root.dir = "/media/zeemeeuw/TAI-seq3/TAI-Rmd/V4_data")
 ```
 
 ### Loading packages
@@ -25,15 +25,15 @@ library(openxlsx)
 library(readxl)
 library(ggalluvial)
 library(ggforce)
-source("/media/zeemeeuw/TAI-seq2/TAI-Rmd/V3_code/utils.R")
-setwd('/media/zeemeeuw/TAI-seq2/TAI-Rmd/V2_data')
+source("/media/zeemeeuw/TAI-seq3/TAI-Rmd/V4_code/utils.R")
+setwd('/media/zeemeeuw/TAI-seq3/TAI-Rmd/V4_data')
 ```
 
 ### Read Seurat and ArchR object for plotting. 
 #### Critical: change the directory to your working dir accordingly!
 ```{r include = TRUE}
-RDSdir <- "/media/zeemeeuw/TAI-seq2/mmTAI/RNA/" # output RDS file dir
-ATACdir <- "/media/zeemeeuw/TAI-seq2/mmTAI/ATAC/overlapped_harmony/" # ATAC root dir
+RDSdir <- "/media/zeemeeuw/TAI-seq3/TAI-Rmd/TAI-seq/mmTAI/RNA/" # output RDS file dir
+ATACdir <- "/media/zeemeeuw/TAI-seq3/TAI-Rmd/TAI-seq/mmTAI/ATAC/overlapped_harmony/" # ATAC root dir
 seu <- readRDS(paste0(RDSdir, "lm_merged_overlapped_harmony.rds"))
 proj <- loadArchRProject(ATACdir)
 ```
