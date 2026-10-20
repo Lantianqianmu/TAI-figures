@@ -10,11 +10,10 @@ All required R packages are indicated in `sessionInfo()` of each markdown file.
 
 ## Preparing codes and data ##
 (1) Clone the repository with `git clone`.  
-(2) Download the source data from BaiduNetdisk. The client for this online storage software can be downloaded from `https://pan.baidu.com/download#win`. Once you have the software installed, paste the link below into your browser to download the source data.  
+(2) Download the minimum data from BaiduNetdisk. The client for this online storage software can be downloaded from `https://pan.baidu.com/download#win`. Once you have the software installed, paste the link below into your browser to download the source data.  
 ```
 https://pan.baidu.com/s/1y_-UiD5W2xGLSXwFo7NV1Q?pwd=TAIS
 ```  
-(3) Source data is the V4_data folder, which contains subfolders for each figure.
 
 ## Reproducing figures ##
 (1) Open any html file in the `TAI-figures` repository. All html files are organized in the same structure, so here I will use __Figure_1.html__ for demonstration. The source data (V4_data/figure_1/) has  been provided in this repo for demonstration.  
