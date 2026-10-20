@@ -17,7 +17,7 @@ https://pan.baidu.com/s/1y_-UiD5W2xGLSXwFo7NV1Q?pwd=TAIS
 (3) Source data is the V4_data folder, which contains subfolders for each figures.
 
 ## Reproducing figures ##
-(1) Open any html file in the `TAI-figures` repository. All html files are organized in the same structure, so here I will use __Figure_1.html__ for demonstration. The source data (V4_data/figure_1/) has  been provided in this repo for demonstration  
+(1) Open any html file in the `TAI-figures` repository. All html files are organized in the same structure, so here I will use __Figure_1.html__ for demonstration. The source data (V4_data/figure_1/) has  been provided in this repo for demonstration.  
 (2) In the first `Loding packages` block, change these two paths according to your environment. The `utils.R` is provided in the `TAI-figures` repository, and the `V4_data` folder is downloaded from BaiduNetdisk. So change
 ```
 source("/media/zeemeeuw/TAI-seq3/TAI-Rmd/V4_code/utils.R")
