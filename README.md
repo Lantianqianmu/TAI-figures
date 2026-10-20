@@ -14,7 +14,7 @@ All required R packages are indicated in `sessionInfo()` of each markdown file.
 ```
 https://pan.baidu.com/s/1y_-UiD5W2xGLSXwFo7NV1Q?pwd=TAIS
 ```  
-(3) Source data is the V4_data folder, which contains subfolders for each figures.
+(3) Source data is the V4_data folder, which contains subfolders for each figure.
 
 ## Reproducing figures ##
 (1) Open any html file in the `TAI-figures` repository. All html files are organized in the same structure, so here I will use __Figure_1.html__ for demonstration. The source data (V4_data/figure_1/) has  been provided in this repo for demonstration.  
